@@ -3,11 +3,12 @@ name: CI-CD Pipeline
 on:
   push:
     branches:
+      # - main
       - hendri/ci-cd
   pull_request:
     branches:
       - main
-      - hendri/ci-cd
+  workflow_dispatch:
 
 jobs:
   build:

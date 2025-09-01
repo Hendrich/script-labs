@@ -1,8 +1,8 @@
-﻿#  Script Labs API
+﻿# Script Labs API
 
 A secure and production-ready Script Labs API built with Node.js, Express, PostgreSQL (Supabase), and JWT authentication.
 
-##  Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -44,7 +44,7 @@ A secure and production-ready Script Labs API built with Node.js, Express, Postg
 
 ## – API Documentation
 
-###  Interactive Documentation (Swagger UI)
+### Interactive Documentation (Swagger UI)
 
 ```
 http://localhost:3000/api-docs
@@ -71,7 +71,7 @@ The API uses JWT authentication via Supabase:
 2. **Login**: `POST /api/auth/login`
 3. **Use Token**: Include in header: `Authorization: Bearer <token>`
 
-##  API Endpoints
+## API Endpoints
 
 ### Authentication
 
@@ -181,7 +181,7 @@ DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 ```
 
-##  Deployment
+## Deployment
 
 ### Render.com (Recommended)
 
@@ -363,7 +363,7 @@ MIT License - see LICENSE file for details.
 
 ---
 
-##  Documentation Files
+## Documentation Files
 
 - `SWAGGER_UI_GUIDE.md` - Swagger UI usage guide
 - `DEPLOYMENT_GUIDE.md` - Deployment instructions
@@ -375,4 +375,4 @@ MIT License - see LICENSE file for details.
 
 **Happy coding! **
 
-
+## trigger git action
