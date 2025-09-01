@@ -1,0 +1,81 @@
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - hendri/ci-cd
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GIT_BRANCH: ${{ github.ref_name }}
+          GIT_AUTHOR: ${{ github.actor }}
+          GIT_COMMIT: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: npm run test:coverage:ci
+
+      - name: SonarCloud Scan
+        if: github.ref == 'refs/heads/main'
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Snyk Security Scan
+        if: github.ref == 'refs/heads/main'
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+
+      - name: Login to GitHub Container Registry
+        if: github.ref == 'refs/heads/main'
+        run: echo ${{ secrets.PAT }} | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+      - name: Set repo owner lowercase
+        if: github.ref == 'refs/heads/main'
+        run: echo "REPO_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Build Docker image
+        if: github.ref == 'refs/heads/main'
+        run: docker build -t ghcr.io/${REPO_OWNER_LC}/script-labs:latest .
+
+      - name: Push Docker image
+        if: github.ref == 'refs/heads/main'
+        run: docker push ghcr.io/${REPO_OWNER_LC}/script-labs:latest
