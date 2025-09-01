@@ -4,11 +4,12 @@ on:
   push:
     branches:
       # - main
-      - hendri/ci-cd
+      - Hendri/CI-CD
+      - dini
+      - feat-unit-test
   pull_request:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
