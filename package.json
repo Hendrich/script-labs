@@ -1,0 +1,71 @@
+{
+  "name": "script-labs-app",
+  "version": "1.0.0",
+  "description": "A secure Script Labs API with Node.js, Express, and PostgreSQL",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "node telegram-bot/real-time-jest-runner.js",
+    "test:coverage:clean": "node telegram-bot/jest-clean-notification.js",
+    "test:coverage:advanced": "node telegram-bot/advanced-jest-runner.js",
+    "test:coverage:simple": "node telegram-bot/quick-test-notification.js",
+    "test:coverage:basic": "node telegram-bot/run-tests-with-notification.js",
+    "test:coverage:telegram": "jest --coverage && node telegram-bot/send-coverage.js",
+    "test:coverage:open": "jest --coverage && start coverage/lcov-report/index.html",
+    "test:coverage:ci": "node telegram-bot/ci-test-runner.js",
+    "test:silent": "jest --silent",
+    "test:verbose": "jest --verbose",
+    "telegram:test": "node telegram-bot/test-notification.js",
+    "telegram:send": "node telegram-bot/send-notification.js",
+    "telegram:clean": "node telegram-bot/test-clean-format.js",
+    "telegram:verify": "node telegram-bot/verify-data-accuracy.js",
+    "telegram:diagnose": "node telegram-bot/diagnose.js",
+    "telegram:ci": "node telegram-bot/send-notification.js",
+    "telegram:test-ci": "node telegram-bot/test-ci-integration.js",
+    "lint": "eslint backend/",
+    "lint:fix": "eslint backend/ --fix"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "postgresql",
+    "supabase",
+    "jwt",
+    "rest-api",
+    "script-labs"
+  ],
+  "author": "Hendri Christianto",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.2",
+    "body-parser": "^1.20.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1",
+    "express-session": "^1.18.2",
+    "helmet": "^7.2.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "pg": "^8.16.0",
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.55.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

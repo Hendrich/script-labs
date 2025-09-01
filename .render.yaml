@@ -1,0 +1,12 @@
+# .render.yaml
+image: node:20
+type: web
+name: script-labs-app
+region: frankfurt
+buildCommand: npm install --production
+startCommand: npm start
+envVars:
+  - key: PORT
+    value: 3000
+cacheDirectories:
+  - node_modules
