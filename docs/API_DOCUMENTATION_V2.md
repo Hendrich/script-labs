@@ -2,7 +2,7 @@
 
 ## ðŸ“‹ Document Information
 
-- **Version**: 2.0
+- **Version**: 2.0 (Security hardening applied in patch release 2.1.0 – see `CHANGELOG_V2.1.md`)
 - **Date**: July 29, 2025
 - **Status**: API Specification
 - **Related**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Implementation Architecture](./IMPLEMENTATION_ARCHITECTURE.md)
