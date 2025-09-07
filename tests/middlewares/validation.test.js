@@ -176,11 +176,11 @@ describe("Validation Middleware", () => {
         );
       });
 
-      test("should reject extra unknown fields", () => {
+      test("should strip extra unknown fields", () => {
         // Arrange
         req.body = {
           title: "Valid Title",
-          Description: "Valid Description",
+          description: "Valid Description",
           unknownField: "should be removed",
         };
 
@@ -189,6 +189,7 @@ describe("Validation Middleware", () => {
 
         // Assert
         expect(next).toHaveBeenCalledTimes(1);
+        // unknownField removed by stripUnknown: true
         expect(req.body.unknownField).toBeUndefined();
       });
     });

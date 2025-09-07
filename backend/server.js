@@ -11,7 +11,7 @@ const fs = require("fs");
 const config = require("./config/config");
 const { errorHandler } = require("./middlewares/errorHandler");
 const { requestLogger, statsLogger } = require("./middlewares/logger");
-const { apiLimiter } = require("./middlewares/rateLimiter");
+// Removed global rate limiter; now applied only to specific auth endpoints
 const { sanitize } = require("./middlewares/validation");
 
 // Import routes
@@ -97,23 +97,27 @@ app.use(
 // =============================================================================
 
 // Helmet for security headers
-app.use(
+// Strengthened CSP & security headers (no unsafe-inline). If inline scripts needed, migrate to nonce approach later.
+app.use((req, res, next) => {
   helmet({
     contentSecurityPolicy: {
+      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:"],
         connectSrc: ["'self'", "https://*.supabase.co"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         objectSrc: ["'none'"],
         frameSrc: ["'none'"],
+        upgradeInsecureRequests: [],
       },
     },
+    referrerPolicy: { policy: "no-referrer" },
     crossOriginEmbedderPolicy: false,
-  })
-);
+  })(req, res, next);
+});
 
 // =============================================================================
 // GENERAL MIDDLEWARE
@@ -138,41 +142,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting
-// Rate limiting hanya untuk endpoint sensitif, dengan limit sangat longgar
-const { createRateLimiter } = require("./middlewares/rateLimiter");
-// Terapkan rate limiter longgar langsung di endpoint
-app.use(
-  "/api/auth",
-  createRateLimiter(
-    600000,
-    1000,
-    "Too many requests from this IP, please try again later"
-  )
-);
-app.use(
-  "/api/labs",
-  createRateLimiter(
-    600000,
-    1000,
-    "Too many requests from this IP, please try again later"
-  )
-);
+// Global rate limiter removed; scoped limiter now only inside authRoutes for /login & /register.
 
 // Body parsing
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 
-// Debug log untuk semua request body
-app.use((req, res, next) => {
-  if (
-    (req.method === "POST" || req.method === "PUT") &&
-    process.env.NODE_ENV !== "test"
-  ) {
-    console.log(`[DEBUG] ${req.method} ${req.url} body:`, req.body);
-  }
-  next();
-});
+// Removed verbose request body debug logging to prevent leaking sensitive info.
 
 // Input sanitization
 app.use(sanitize);
