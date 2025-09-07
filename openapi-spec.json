@@ -5,8 +5,8 @@
     "description": "A secure Script Labs API built with Node.js and Express, featuring JWT authentication via Supabase and CRUD operations for Labs management.",
     "version": "1.0.0",
     "contact": {
-      "name": "Hendri Christianto",
-      "email": "hendri.christianto24@gmail.com"
+      "name": "example",
+      "email": "example@gmail.com"
     }
   },
   "servers": [
@@ -372,7 +372,7 @@
                 "$ref": "#/components/schemas/AuthCredentials"
               },
               "example": {
-                "email": "hendri.christianto24@gmail.com",
+                "email": "example@gmail.com",
                 "password": "OQS4iqyWkAdBXgsS"
               }
             }
@@ -450,7 +450,7 @@
                 "$ref": "#/components/schemas/AuthCredentials"
               },
               "example": {
-                "email": "hendri.christianto24@gmail.com",
+                "email": "example@gmail.com",
                 "password": "OQS4iqyWkAdBXgsS"
               }
             }
