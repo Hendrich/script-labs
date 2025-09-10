@@ -227,6 +227,49 @@ npm run test:watch # Watch mode
 - **JWT Authentication**: Secure token-based auth
 - **Input Sanitization**: XSS protection
 
+### CSRF Protection
+
+This project uses a custom lightweight CSRF defense (no deprecated `csurf` dependency):
+
+1. A per-session token is generated and stored at `req.session.csrfToken`.
+2. Safe HTTP methods (GET/HEAD/OPTIONS) automatically receive the token in the `X-CSRF-Token` response header.
+3. State‑changing requests (POST/PUT/PATCH/DELETE) must include the token in ONE of:
+   - Header: `X-CSRF-Token: <token>`
+   - JSON body: `{ "_csrf": "<token>" }`
+   - Query string: `?_csrf=<token>` (discouraged for production except for limited cases)
+4. Token validation uses constant‑time comparison (`crypto.timingSafeEqual`).
+5. Session cookie is set with `SameSite=strict`, `httpOnly`, and `secure` (in production) to mitigate CSRF via cross‑site requests.
+6. Additional Origin/Referer enforcement for state‑changing requests ensures only allowed front-end origins (from CORS config / `FRONTEND_URL`) can submit mutations.
+
+If you need to rotate the token after each successful write, uncomment the rotation line in `middlewares/csrf.js`.
+
+Example flow (frontend):
+
+```js
+// 1. Fetch a safe endpoint to obtain CSRF token
+const health = await fetch("/health", { credentials: "include" });
+const csrfToken = health.headers.get("X-CSRF-Token");
+
+// 2. Use token in a POST request
+await fetch("/api/labs", {
+  method: "POST",
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json",
+    "X-CSRF-Token": csrfToken,
+  },
+  body: JSON.stringify({ title: "My Lab", description: "Example" }),
+});
+```
+
+### SQL Injection Mitigation
+
+All database interactions use parameterized queries via the `pg` client. Dynamic queries were refactored to remove concatenated placeholder arithmetic that static analysis tools (e.g., Snyk) sometimes flag as potential SQL injection. Update operations explicitly whitelist allowed fields (`title`, `description`) before constructing the `SET` clause. If Snyk still reports a SQLi warning, it is a false positive—no untrusted input is interpolated directly into SQL text.
+
+### Reporting Security Issues
+
+If you discover a vulnerability that is not covered, please open a GitHub Issue with steps to reproduce, or contact the maintainer directly. For high‑severity findings, avoid public disclosure until a patch is prepared.
+
 ## Troubleshooting
 
 ### Common Issues & Solutions

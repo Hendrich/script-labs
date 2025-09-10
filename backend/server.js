@@ -161,6 +161,40 @@ app.use(sanitize);
 // CORS configuration
 app.use(cors(config.cors));
 
+// Strict Origin/Referer enforcement for state-changing requests (extra CSRF hardening)
+app.use((req, res, next) => {
+  const stateChanging = ["POST", "PUT", "PATCH", "DELETE"];
+  if (!stateChanging.includes(req.method)) return next();
+
+  // Allow only configured origins
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  const allowed = new Set();
+  // Build allowed origins from CORS config (if function, replicate logic partially)
+  const customAllowed = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+  customAllowed.forEach((o) => allowed.add(o));
+
+  const check = (val) =>
+    val ? [...allowed].some((a) => val.startsWith(a)) : true; // allow requests with no origin (e.g., curl)
+
+  if (!check(origin) || !check(referer)) {
+    return res.status(403).json({
+      success: false,
+      error: {
+        message: "Origin/Referer not allowed",
+        code: "CSRF_ORIGIN_REFERER",
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+  next();
+});
+
 // Custom CSRF protection middleware (replaces deprecated csurf)
 app.use(csrfProtection);
 
