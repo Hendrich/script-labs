@@ -227,40 +227,11 @@ npm run test:watch # Watch mode
 - **JWT Authentication**: Secure token-based auth
 - **Input Sanitization**: XSS protection
 
-### CSRF Protection
+### Cross-Site Request Forgery (CSRF)
 
-This project uses a custom lightweight CSRF defense (no deprecated `csurf` dependency):
+Saat ini aplikasi mengandalkan kombinasi JWT auth (Bearer token), cookie konfigurasi `SameSite` + pemeriksaan Origin/Referer untuk permintaan state‑changing sebagai mitigasi risiko CSRF. Karena tidak ada form tradisional yang otomatis mengirim kredensial ke domain lain (dan endpoint sensitif memerlukan Authorization header eksplisit), lapisan token CSRF tambahan ditiadakan untuk mengurangi kompleksitas operasional.
 
-1. A per-session token is generated and stored at `req.session.csrfToken`.
-2. Safe HTTP methods (GET/HEAD/OPTIONS) automatically receive the token in the `X-CSRF-Token` response header.
-3. State‑changing requests (POST/PUT/PATCH/DELETE) must include the token in ONE of:
-   - Header: `X-CSRF-Token: <token>`
-   - JSON body: `{ "_csrf": "<token>" }`
-   - Query string: `?_csrf=<token>` (discouraged for production except for limited cases)
-4. Token validation uses constant‑time comparison (`crypto.timingSafeEqual`).
-5. Session cookie is set with `SameSite=strict`, `httpOnly`, and `secure` (in production) to mitigate CSRF via cross‑site requests.
-6. Additional Origin/Referer enforcement for state‑changing requests ensures only allowed front-end origins (from CORS config / `FRONTEND_URL`) can submit mutations.
-
-If you need to rotate the token after each successful write, uncomment the rotation line in `middlewares/csrf.js`.
-
-Example flow (frontend):
-
-```js
-// 1. Fetch a safe endpoint to obtain CSRF token
-const health = await fetch("/health", { credentials: "include" });
-const csrfToken = health.headers.get("X-CSRF-Token");
-
-// 2. Use token in a POST request
-await fetch("/api/labs", {
-  method: "POST",
-  credentials: "include",
-  headers: {
-    "Content-Type": "application/json",
-    "X-CSRF-Token": csrfToken,
-  },
-  body: JSON.stringify({ title: "My Lab", description: "Example" }),
-});
-```
+Jika di masa depan ada kebutuhan menerima request credentialed dari beberapa domain atau menggunakan session-based auth penuh di browser, Anda dapat menambahkan kembali mekanisme token CSRF (misal custom middleware atau library lain) dan mendokumentasikannya di bagian ini.
 
 ### SQL Injection Mitigation
 

@@ -13,7 +13,7 @@ const { errorHandler } = require("./middlewares/errorHandler");
 const { requestLogger, statsLogger } = require("./middlewares/logger");
 // Removed global rate limiter; now applied only to specific auth endpoints
 const { sanitize } = require("./middlewares/validation");
-const { csrfProtection } = require("./middlewares/csrf");
+// CSRF middleware removed (using stateless/JWT approach + SameSite + Origin checks)
 
 // CSRF protection removed (csurf deprecated & introduced vulnerable transitive dependency).
 // Rely on: SameSite=strict cookies, Origin/Referer validation (to be added), and JWT/Supabase flows.
@@ -253,18 +253,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Custom CSRF protection middleware (replaces deprecated csurf)
-app.use(csrfProtection);
-
-// Expose explicit CSRF token endpoint for SPA to pre-fetch (returns JSON)
-app.get("/api/csrf-token", (req, res) => {
-  res.setHeader("X-CSRF-Token", req.session.csrfToken);
-  res.json({
-    success: true,
-    csrfToken: req.session.csrfToken,
-    timestamp: new Date().toISOString(),
-  });
-});
+// CSRF token route removed. State-changing protection relies on auth + SameSite cookie + Origin/Referer check.
 
 // =============================================================================
 // API ROUTES
