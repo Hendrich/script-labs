@@ -65,6 +65,8 @@ try {
 }
 
 const app = express();
+// Trust first proxy (Render / reverse proxy) so secure cookies & protocol detection work
+app.set("trust proxy", 1);
 const session = require("express-session");
 const PORT = config.port;
 
@@ -107,11 +109,9 @@ let computedSameSite = sameSiteEnv || "lax";
 try {
   if (!sameSiteEnv && process.env.FRONTEND_URL) {
     const fe = new URL(process.env.FRONTEND_URL);
-    // If API host (current) differs by registrable domain or hostname
-    // we switch to None to allow credentialed cross-site requests
-    // Simplified: if FRONTEND_URL host differs from request host, we rely on 'none'
-    // (host not available yet here; use env hint API_PUBLIC_URL)
-    const apiHost = process.env.API_PUBLIC_HOST || ""; // optional
+    // Normalize API_PUBLIC_HOST (strip protocol if present)
+    let apiHost = process.env.API_PUBLIC_HOST || "";
+    apiHost = apiHost.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
     if (apiHost && apiHost !== fe.hostname) {
       computedSameSite = "none"; // requires secure
     }
@@ -134,6 +134,21 @@ app.use(
     },
   })
 );
+
+// Debug log (only if explicitly enabled) to verify session / cookie params in production issues
+if (process.env.DEBUG_SESSION === "true") {
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api")) return next();
+    console.log("[SESSION-DBG]", {
+      sid: req.sessionID,
+      hasToken: !!req.session?.csrfToken,
+      sameSite: computedSameSite,
+      domain: derivedDomain,
+      secure: config.nodeEnv === "production" || computedSameSite === "none",
+    });
+    next();
+  });
+}
 
 // =============================================================================
 // SECURITY MIDDLEWARE
@@ -196,8 +211,13 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 // Input sanitization
 app.use(sanitize);
 
-// CORS configuration
-app.use(cors(config.cors));
+// CORS configuration (+ expose CSRF header)
+app.use(
+  cors({
+    ...config.cors,
+    exposedHeaders: ["X-CSRF-Token"],
+  })
+);
 
 // Strict Origin/Referer enforcement for state-changing requests (extra CSRF hardening)
 app.use((req, res, next) => {
