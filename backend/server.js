@@ -83,16 +83,54 @@ if (config.nodeEnv === "test") {
   };
 }
 
+// Derive cookie domain & sameSite dynamically for multi-subdomain deployments
+const derivedDomain =
+  process.env.SESSION_COOKIE_DOMAIN ||
+  (() => {
+    try {
+      const fe = process.env.FRONTEND_URL || "";
+      const u = new URL(fe);
+      // If frontend is on a subdomain (e.g. labs.example.com) use parent domain (.example.com)
+      const parts = u.hostname.split(".");
+      if (parts.length > 2) {
+        return `.${parts.slice(-2).join(".")}`; // second-level + TLD
+      }
+      return undefined; // default
+    } catch (e) {
+      return undefined;
+    }
+  })();
+
+// Decide proper SameSite attr: if cross-site (frontend different origin) => None
+const sameSiteEnv = process.env.SESSION_SAMESITE; // allow explicit override
+let computedSameSite = sameSiteEnv || "lax";
+try {
+  if (!sameSiteEnv && process.env.FRONTEND_URL) {
+    const fe = new URL(process.env.FRONTEND_URL);
+    // If API host (current) differs by registrable domain or hostname
+    // we switch to None to allow credentialed cross-site requests
+    // Simplified: if FRONTEND_URL host differs from request host, we rely on 'none'
+    // (host not available yet here; use env hint API_PUBLIC_URL)
+    const apiHost = process.env.API_PUBLIC_HOST || ""; // optional
+    if (apiHost && apiHost !== fe.hostname) {
+      computedSameSite = "none"; // requires secure
+    }
+  }
+} catch (e) {
+  // fallback keep lax
+}
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "scriptlabssecret",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 10 * 60 * 1000, // 10 menit
+      maxAge: 10 * 60 * 1000,
       httpOnly: true,
-      secure: config.nodeEnv === "production", // hanya https di production
-      sameSite: "strict", // mitigate CSRF by preventing cross-site cookie sending
+      secure: config.nodeEnv === "production" || computedSameSite === "none",
+      sameSite: computedSameSite, // dynamic (strict/lax/none)
+      domain: derivedDomain,
     },
   })
 );
@@ -197,6 +235,16 @@ app.use((req, res, next) => {
 
 // Custom CSRF protection middleware (replaces deprecated csurf)
 app.use(csrfProtection);
+
+// Expose explicit CSRF token endpoint for SPA to pre-fetch (returns JSON)
+app.get("/api/csrf-token", (req, res) => {
+  res.setHeader("X-CSRF-Token", req.session.csrfToken);
+  res.json({
+    success: true,
+    csrfToken: req.session.csrfToken,
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // =============================================================================
 // API ROUTES
