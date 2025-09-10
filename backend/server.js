@@ -3,7 +3,6 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const helmet = require("helmet");
-const csurf = require("csurf");
 const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const fs = require("fs");
@@ -15,8 +14,8 @@ const { requestLogger, statsLogger } = require("./middlewares/logger");
 // Removed global rate limiter; now applied only to specific auth endpoints
 const { sanitize } = require("./middlewares/validation");
 
-// CSRF protection setup
-const csrfProtection = csurf({ cookie: false }); // Use session, not cookie
+// CSRF protection removed (csurf deprecated & introduced vulnerable transitive dependency).
+// Rely on: SameSite=strict cookies, Origin/Referer validation (to be added), and JWT/Supabase flows.
 
 // Import routes
 const labRoutes = require("./routes/labRoutes");
@@ -160,13 +159,22 @@ app.use(sanitize);
 // CORS configuration
 app.use(cors(config.cors));
 
-// CSRF protection (apply after session, before routes)
-app.use(csrfProtection);
-
-// Expose CSRF token for frontend (GET only)
+// Optional: implement custom lightweight CSRF check for state-changing requests
 app.use((req, res, next) => {
-  if (req.method === "GET") {
-    res.setHeader("X-CSRF-Token", req.csrfToken());
+  const stateChanging = ["POST", "PUT", "PATCH", "DELETE"];
+  if (stateChanging.includes(req.method)) {
+    const origin = req.headers.origin;
+    const host = req.headers.host;
+    if (origin && !origin.includes(host)) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          message: "Potential CSRF origin mismatch",
+          code: "CSRF_ORIGIN",
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
   next();
 });

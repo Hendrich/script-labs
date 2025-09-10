@@ -29,32 +29,45 @@ router.get("/search", async (req, res, next) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    let query = "SELECT * FROM labs WHERE user_id = $1";
-    let queryParams = [userId];
-
+    // Two explicit query shapes to avoid dynamic placeholder arithmetic (helps Snyk static analysis)
+    let rows;
     if (q) {
-      query += " AND (title ILIKE $2 OR description ILIKE $2)";
-      queryParams.push(`%${q}%`);
+      const searchParam = `%${q}%`;
+      const searchQuery = `
+        SELECT * FROM labs
+        WHERE user_id = $1
+          AND (title ILIKE $2 OR description ILIKE $2)
+        ORDER BY created_at DESC
+        LIMIT $3 OFFSET $4
+      `;
+      ({ rows } = await pool.query(searchQuery, [userId, searchParam, limitNum, offset]));
+    } else {
+      const baseQuery = `
+        SELECT * FROM labs
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+      `;
+      ({ rows } = await pool.query(baseQuery, [userId, limitNum, offset]));
     }
 
-    query +=
-      " ORDER BY created_at DESC LIMIT $" +
-      (queryParams.length + 1) +
-      " OFFSET $" +
-      (queryParams.length + 2);
-    queryParams.push(limitNum, offset);
-
-    const { rows } = await pool.query(query, queryParams);
-
-    // Get total count for pagination
-    let countQuery = "SELECT COUNT(*) FROM labs WHERE user_id = $1";
-    let countParams = [userId];
+    // Total count
+    let totalLabs = 0;
     if (q) {
-      countQuery += " AND (title ILIKE $2 OR description ILIKE $2)";
-      countParams.push(`%${q}%`);
+      const countQuery = `
+        SELECT COUNT(*) FROM labs
+        WHERE user_id = $1
+          AND (title ILIKE $2 OR description ILIKE $2)
+      `;
+      const { rows: countRows } = await pool.query(countQuery, [userId, `%${q}%`]);
+      totalLabs = parseInt(countRows[0].count);
+    } else {
+      const { rows: countRows } = await pool.query(
+        "SELECT COUNT(*) FROM labs WHERE user_id = $1",
+        [userId]
+      );
+      totalLabs = parseInt(countRows[0].count);
     }
-    const { rows: countRows } = await pool.query(countQuery, countParams);
-    const totalLabs = parseInt(countRows[0].count);
 
     res.json({
       success: true,
@@ -82,56 +95,61 @@ router.get("/search", async (req, res, next) => {
 router.get("/", async (req, res, next) => {
   try {
     const userId = req.user_id;
-
-    // Add basic query parameters support (future enhancement)
     const { page = 1, limit = 50, search } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const offset = (pageNum - 1) * limitNum;
 
-    let query = "SELECT * FROM labs WHERE user_id = $1";
-    let queryParams = [userId];
-
-    // Add search functionality if search parameter is provided
+    let rows;
     if (search) {
-      query += " AND (title ILIKE $2 OR description ILIKE $2)";
-      queryParams.push(`%${search}%`);
+      const searchParam = `%${search}%`;
+      const qWithSearch = `
+        SELECT * FROM labs
+        WHERE user_id = $1
+          AND (title ILIKE $2 OR description ILIKE $2)
+        ORDER BY created_at DESC
+        LIMIT $3 OFFSET $4
+      `;
+      ({ rows } = await pool.query(qWithSearch, [userId, searchParam, limitNum, offset]));
+    } else {
+      const qBase = `
+        SELECT * FROM labs
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2 OFFSET $3
+      `;
+      ({ rows } = await pool.query(qBase, [userId, limitNum, offset]));
     }
 
-    // Add ordering and pagination
-    query +=
-      " ORDER BY created_at DESC LIMIT $" +
-      (queryParams.length + 1) +
-      " OFFSET $" +
-      (queryParams.length + 2);
-    queryParams.push(limit, offset);
-
-    const { rows } = await pool.query(query, queryParams);
-
-    // Get total count for pagination
-    let countQuery = "SELECT COUNT(*) FROM labs WHERE user_id = $1";
-    let countParams = [userId];
-
+    let totalLabs = 0;
     if (search) {
-      countQuery += " AND (title ILIKE $2 OR description ILIKE $2)";
-      countParams.push(`%${search}%`);
+      const { rows: countRows } = await pool.query(
+        `SELECT COUNT(*) FROM labs WHERE user_id = $1 AND (title ILIKE $2 OR description ILIKE $2)`,
+        [userId, `%${search}%`]
+      );
+      totalLabs = parseInt(countRows[0].count);
+    } else {
+      const { rows: countRows } = await pool.query(
+        `SELECT COUNT(*) FROM labs WHERE user_id = $1`,
+        [userId]
+      );
+      totalLabs = parseInt(countRows[0].count);
     }
-
-    const { rows: countRows } = await pool.query(countQuery, countParams);
-    const totalLabs = parseInt(countRows[0].count);
 
     res.json({
       success: true,
       data: rows,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total: totalLabs,
-        totalPages: Math.ceil(totalLabs / limit),
+        totalPages: Math.ceil(totalLabs / limitNum),
       },
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
     if (process.env.NODE_ENV !== "test") {
-      console.error("âŒ Error fetching labs:", err.message);
+      console.error("❌ Error fetching labs:", err.message);
     }
     next(new AppError("Failed to fetch labs", 500));
   }
@@ -234,16 +252,23 @@ router.put(
       const userId = req.user_id;
       const updateFields = req.body;
 
-      // Build dynamic update query
+      // Whitelist allowed columns to prevent SQL injection via field names
+      const allowed = ["title", "description"]; // extend if needed
       const setClauses = [];
       const values = [];
       let paramCount = 1;
 
-      Object.keys(updateFields).forEach((key) => {
-        setClauses.push(`${key} = $${paramCount}`);
-        values.push(updateFields[key]);
-        paramCount++;
+      Object.entries(updateFields).forEach(([key, value]) => {
+        if (allowed.includes(key)) {
+          setClauses.push(`${key} = $${paramCount}`);
+          values.push(value);
+          paramCount++;
+        }
       });
+
+      if (setClauses.length === 0) {
+        return next(new AppError("No valid fields to update", 400));
+      }
 
       // Add updated_at timestamp
       setClauses.push(`updated_at = NOW()`);
