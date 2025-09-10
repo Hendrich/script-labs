@@ -40,7 +40,12 @@ router.get("/search", async (req, res, next) => {
         ORDER BY created_at DESC
         LIMIT $3 OFFSET $4
       `;
-      ({ rows } = await pool.query(searchQuery, [userId, searchParam, limitNum, offset]));
+      ({ rows } = await pool.query(searchQuery, [
+        userId,
+        searchParam,
+        limitNum,
+        offset,
+      ]));
     } else {
       const baseQuery = `
         SELECT * FROM labs
@@ -59,7 +64,10 @@ router.get("/search", async (req, res, next) => {
         WHERE user_id = $1
           AND (title ILIKE $2 OR description ILIKE $2)
       `;
-      const { rows: countRows } = await pool.query(countQuery, [userId, `%${q}%`]);
+      const { rows: countRows } = await pool.query(countQuery, [
+        userId,
+        `%${q}%`,
+      ]);
       totalLabs = parseInt(countRows[0].count);
     } else {
       const { rows: countRows } = await pool.query(
@@ -110,7 +118,12 @@ router.get("/", async (req, res, next) => {
         ORDER BY created_at DESC
         LIMIT $3 OFFSET $4
       `;
-      ({ rows } = await pool.query(qWithSearch, [userId, searchParam, limitNum, offset]));
+      ({ rows } = await pool.query(qWithSearch, [
+        userId,
+        searchParam,
+        limitNum,
+        offset,
+      ]));
     } else {
       const qBase = `
         SELECT * FROM labs
@@ -256,32 +269,31 @@ router.put(
       const allowed = ["title", "description"]; // extend if needed
       const setClauses = [];
       const values = [];
-      let paramCount = 1;
+      let idx = 1; // sequential placeholder index
 
-      Object.entries(updateFields).forEach(([key, value]) => {
+      for (const [key, value] of Object.entries(updateFields)) {
         if (allowed.includes(key)) {
-          setClauses.push(`${key} = $${paramCount}`);
+          setClauses.push(`${key} = $${idx}`);
           values.push(value);
-          paramCount++;
+          idx++;
         }
-      });
+      }
 
       if (setClauses.length === 0) {
         return next(new AppError("No valid fields to update", 400));
       }
 
-      // Add updated_at timestamp
+      // Add updated_at timestamp (no placeholder required)
       setClauses.push(`updated_at = NOW()`);
 
-      // Add WHERE conditions
+      // Assign fixed placeholders for WHERE clause after collecting field values
+      const idIndex = idx; // placeholder for id
+      const userIndex = idx + 1; // placeholder for user_id
       values.push(labId, userId);
 
-      const query = `
-	  UPDATE labs 
-	  SET ${setClauses.join(", ")} 
-	  WHERE id = $${values.length - 1} AND user_id = $${values.length}
-	  RETURNING *
-	`;
+      const query = `UPDATE labs SET ${setClauses.join(
+        ", "
+      )} WHERE id = $${idIndex} AND user_id = $${userIndex} RETURNING *`;
 
       const { rows } = await pool.query(query, values);
 
