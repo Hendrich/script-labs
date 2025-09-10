@@ -13,6 +13,7 @@ const { errorHandler } = require("./middlewares/errorHandler");
 const { requestLogger, statsLogger } = require("./middlewares/logger");
 // Removed global rate limiter; now applied only to specific auth endpoints
 const { sanitize } = require("./middlewares/validation");
+const { csrfProtection } = require("./middlewares/csrf");
 
 // CSRF protection removed (csurf deprecated & introduced vulnerable transitive dependency).
 // Rely on: SameSite=strict cookies, Origin/Referer validation (to be added), and JWT/Supabase flows.
@@ -91,6 +92,7 @@ app.use(
       maxAge: 10 * 60 * 1000, // 10 menit
       httpOnly: true,
       secure: config.nodeEnv === "production", // hanya https di production
+      sameSite: "strict", // mitigate CSRF by preventing cross-site cookie sending
     },
   })
 );
@@ -159,25 +161,8 @@ app.use(sanitize);
 // CORS configuration
 app.use(cors(config.cors));
 
-// Optional: implement custom lightweight CSRF check for state-changing requests
-app.use((req, res, next) => {
-  const stateChanging = ["POST", "PUT", "PATCH", "DELETE"];
-  if (stateChanging.includes(req.method)) {
-    const origin = req.headers.origin;
-    const host = req.headers.host;
-    if (origin && !origin.includes(host)) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          message: "Potential CSRF origin mismatch",
-          code: "CSRF_ORIGIN",
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-  next();
-});
+// Custom CSRF protection middleware (replaces deprecated csurf)
+app.use(csrfProtection);
 
 // =============================================================================
 // API ROUTES
