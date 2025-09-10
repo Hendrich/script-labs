@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const helmet = require("helmet");
+const csurf = require("csurf");
 const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const fs = require("fs");
@@ -13,6 +14,9 @@ const { errorHandler } = require("./middlewares/errorHandler");
 const { requestLogger, statsLogger } = require("./middlewares/logger");
 // Removed global rate limiter; now applied only to specific auth endpoints
 const { sanitize } = require("./middlewares/validation");
+
+// CSRF protection setup
+const csrfProtection = csurf({ cookie: false }); // Use session, not cookie
 
 // Import routes
 const labRoutes = require("./routes/labRoutes");
@@ -155,6 +159,17 @@ app.use(sanitize);
 
 // CORS configuration
 app.use(cors(config.cors));
+
+// CSRF protection (apply after session, before routes)
+app.use(csrfProtection);
+
+// Expose CSRF token for frontend (GET only)
+app.use((req, res, next) => {
+  if (req.method === "GET") {
+    res.setHeader("X-CSRF-Token", req.csrfToken());
+  }
+  next();
+});
 
 // =============================================================================
 // API ROUTES
