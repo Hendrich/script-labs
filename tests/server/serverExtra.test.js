@@ -13,7 +13,7 @@ describe("Server Extra Coverage Tests", () => {
     process.env.NODE_ENV = "test";
     process.env.PORT = "3334";
     process.env.JWT_SECRET = "test_secret_key";
-    process.env.SESSION_SECRET = "test_session_secret";
+    // SESSION_SECRET removed (stateless JWT architecture)
 
     // Import app after setting environment
     app = require("../../backend/server");
@@ -144,30 +144,7 @@ describe("Server Extra Coverage Tests", () => {
     await request(app).options("/api/labs").expect(204);
   });
 
-  test("should handle session middleware", async () => {
-    // Test session middleware configuration
-    // With saveUninitialized: false, cookie won't be set unless session is modified
-
-    // Test 1: Normal request should work without session cookie
-    const healthResponse = await request(app).get("/health");
-
-    expect(healthResponse.status).toBe(200);
-    expect(healthResponse.body).toHaveProperty("success", true);
-
-    // Test 2: Multiple requests should work (session middleware doesn't crash)
-    const apiResponse = await request(app).get("/api/labs");
-
-    // Should get 401 (unauthorized) but not crash due to session middleware
-    expect(apiResponse.status).toBe(401);
-
-    // Test 3: POST request should also work with session middleware
-    const postResponse = await request(app)
-      .post("/api/auth/login")
-      .send({ email: "test@example.com", password: "test" });
-
-    // Should process request without crashing (session middleware working)
-    expect([400, 401, 422, 500]).toContain(postResponse.status);
-  });
+  // Session middleware test removed (application now stateless)
 
   test("should handle security headers from helmet", async () => {
     const response = await request(app).get("/health").expect(200);

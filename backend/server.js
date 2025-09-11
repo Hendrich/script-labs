@@ -67,88 +67,9 @@ try {
 const app = express();
 // Trust first proxy (Render / reverse proxy) so secure cookies & protocol detection work
 app.set("trust proxy", 1);
-const session = require("express-session");
 const PORT = config.port;
 
-// =============================================================================
-// SESSION MIDDLEWARE
-// =============================================================================
-// Suppress express-session warnings in test environment
-if (config.nodeEnv === "test") {
-  const originalWarn = console.warn;
-  console.warn = (message, ...args) => {
-    // Suppress express-session MemoryStore warning
-    if (typeof message === "string" && message.includes("MemoryStore is not")) {
-      return;
-    }
-    originalWarn(message, ...args);
-  };
-}
-
-// Derive cookie domain & sameSite dynamically for multi-subdomain deployments
-const derivedDomain =
-  process.env.SESSION_COOKIE_DOMAIN ||
-  (() => {
-    try {
-      const fe = process.env.FRONTEND_URL || "";
-      const u = new URL(fe);
-      // If frontend is on a subdomain (e.g. labs.example.com) use parent domain (.example.com)
-      const parts = u.hostname.split(".");
-      if (parts.length > 2) {
-        return `.${parts.slice(-2).join(".")}`; // second-level + TLD
-      }
-      return undefined; // default
-    } catch (e) {
-      return undefined;
-    }
-  })();
-
-// Decide proper SameSite attr: if cross-site (frontend different origin) => None
-const sameSiteEnv = process.env.SESSION_SAMESITE; // allow explicit override
-let computedSameSite = sameSiteEnv || "lax";
-try {
-  if (!sameSiteEnv && process.env.FRONTEND_URL) {
-    const fe = new URL(process.env.FRONTEND_URL);
-    // Normalize API_PUBLIC_HOST (strip protocol if present)
-    let apiHost = process.env.API_PUBLIC_HOST || "";
-    apiHost = apiHost.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-    if (apiHost && apiHost !== fe.hostname) {
-      computedSameSite = "none"; // requires secure
-    }
-  }
-} catch (e) {
-  // fallback keep lax
-}
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "scriptlabssecret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 10 * 60 * 1000,
-      httpOnly: true,
-      secure: config.nodeEnv === "production" || computedSameSite === "none",
-      sameSite: computedSameSite, // dynamic (strict/lax/none)
-      domain: derivedDomain,
-    },
-  })
-);
-
-// Debug log (only if explicitly enabled) to verify session / cookie params in production issues
-if (process.env.DEBUG_SESSION === "true") {
-  app.use((req, res, next) => {
-    if (!req.path.startsWith("/api")) return next();
-    console.log("[SESSION-DBG]", {
-      sid: req.sessionID,
-      hasToken: !!req.session?.csrfToken,
-      sameSite: computedSameSite,
-      domain: derivedDomain,
-      secure: config.nodeEnv === "production" || computedSameSite === "none",
-    });
-    next();
-  });
-}
+// Session middleware removed: application is fully stateless (JWT in Authorization header).
 
 // =============================================================================
 // SECURITY MIDDLEWARE
@@ -211,11 +132,10 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "10mb" }));
 // Input sanitization
 app.use(sanitize);
 
-// CORS configuration (+ expose CSRF header)
+// CORS configuration (no CSRF header needed anymore)
 app.use(
   cors({
     ...config.cors,
-    exposedHeaders: ["X-CSRF-Token"],
   })
 );
 

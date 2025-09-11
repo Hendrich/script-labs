@@ -13,7 +13,7 @@ describe("Server Basic Tests", () => {
     process.env.NODE_ENV = "test";
     process.env.PORT = "3333";
     process.env.JWT_SECRET = "test_secret_key";
-    process.env.SESSION_SECRET = "test_session_secret";
+    // SESSION_SECRET removed (stateless JWT)
 
     // Import app after setting environment
     app = require("../../backend/server");

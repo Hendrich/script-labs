@@ -229,9 +229,13 @@ npm run test:watch # Watch mode
 
 ### Cross-Site Request Forgery (CSRF)
 
-Saat ini aplikasi mengandalkan kombinasi JWT auth (Bearer token), cookie konfigurasi `SameSite` + pemeriksaan Origin/Referer untuk permintaan state‑changing sebagai mitigasi risiko CSRF. Karena tidak ada form tradisional yang otomatis mengirim kredensial ke domain lain (dan endpoint sensitif memerlukan Authorization header eksplisit), lapisan token CSRF tambahan ditiadakan untuk mengurangi kompleksitas operasional.
+Aplikasi sekarang 100% stateless (tidak memakai `express-session`). Perlindungan CSRF bergantung pada:
 
-Jika di masa depan ada kebutuhan menerima request credentialed dari beberapa domain atau menggunakan session-based auth penuh di browser, Anda dapat menambahkan kembali mekanisme token CSRF (misal custom middleware atau library lain) dan mendokumentasikannya di bagian ini.
+1. JWT wajib di header `Authorization: Bearer <token>` (tidak otomatis terkirim oleh browser seperti cookie)
+2. Pemeriksaan Origin/Referer untuk metode state‑changing (POST/PUT/PATCH/DELETE)
+3. CORS hanya mengizinkan origin yang diset di konfigurasi
+
+Karena tidak ada session cookie maupun cookie auth yang dikirim otomatis lintas situs, risiko CSRF sangat rendah. Token CSRF terpisah tidak diperlukan saat ini. Jika nanti berpindah ke model auth berbasis cookie, tambahkan kembali lapisan token CSRF.
 
 ### SQL Injection Mitigation
 

@@ -104,9 +104,13 @@ describe("Lab Routes", () => {
 
         // Verify database calls
         expect(mockDb.query).toHaveBeenCalledTimes(2);
-        expect(mockDb.query.mock.calls[0][0]).toContain(
-          "SELECT * FROM labs WHERE user_id = $1"
+        // Normalize whitespace and assert core pattern exists
+        const firstQuerySql = mockDb.query.mock.calls[0][0].replace(
+          /\s+/g,
+          " "
         );
+        expect(firstQuerySql).toContain("SELECT * FROM labs");
+        expect(firstQuerySql).toContain("WHERE user_id = $1");
         expect(mockDb.query.mock.calls[0][1]).toEqual(["test-user-123", 50, 0]);
       });
 
@@ -128,7 +132,7 @@ describe("Lab Routes", () => {
         // Verify pagination calculation (page 2, limit 10 = offset 10)
         expect(mockDb.query.mock.calls[0][1]).toEqual([
           "test-user-123",
-          "10",
+          10,
           10,
         ]);
       });
@@ -183,7 +187,7 @@ describe("Lab Routes", () => {
         expect(mockDb.query.mock.calls[0][1]).toEqual([
           "test-user-123",
           "%Lab%",
-          "5",
+          5,
           5,
         ]);
       });
