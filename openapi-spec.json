@@ -27,15 +27,15 @@
   "paths": {
     "/api/Labs/search": {
       "get": {
-        "summary": "Search Labs by title or author",
-        "description": "Search Labs for the authenticated user by title or author. Tidak mengubah database.",
+        "summary": "Search Labs by title or description",
+        "description": "Search Labs for the authenticated user by title or description. Tidak mengubah database.",
         "tags": ["Labs"],
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           {
             "name": "q",
             "in": "query",
-            "description": "Search query (title or author)",
+            "description": "Search query (title or description)",
             "required": false,
             "schema": { "type": "string" }
           },
@@ -86,7 +86,7 @@
                     {
                       "id": 14,
                       "title": "Atomic Habits",
-                      "author": "James Clear",
+                      "description": "James Clear",
                       "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
                     }
                   ],
@@ -132,13 +132,13 @@
                   {
                     "id": 14,
                     "title": "buku menari",
-                    "author": "jojo",
+                    "description": "jojo",
                     "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
                   },
                   {
                     "id": 15,
                     "title": "buku mewarnai",
-                    "author": "santi",
+                    "description": "santi",
                     "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
                   }
                 ]
@@ -171,7 +171,7 @@
               },
               "example": {
                 "title": "Atomic Habits",
-                "author": "James Clear"
+                "description": "book about to grow up your habbit"
               }
             }
           }
@@ -187,7 +187,7 @@
                 "example": {
                   "id": 25,
                   "title": "Atomic Habits",
-                  "author": "James Clear",
+                  "description": "book about to grow up your habbit",
                   "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
                 }
               }
@@ -201,7 +201,7 @@
                   "$ref": "#/components/schemas/Error"
                 },
                 "example": {
-                  "message": "Title and author are required"
+                  "message": "Title and description are required"
                 }
               }
             }
@@ -246,7 +246,7 @@
               },
               "example": {
                 "title": "Atomic Habits Updated",
-                "author": "J. Clear"
+                "description": "book about to grow up your habbit"
               }
             }
           }
@@ -262,7 +262,7 @@
                 "example": {
                   "id": 14,
                   "title": "Atomic Habits Updated",
-                  "author": "J. Clear",
+                  "description": "book about to grow up your habbit",
                   "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
                 }
               }
@@ -693,10 +693,10 @@
             "description": "Title of the Lab",
             "example": "Atomic Habits"
           },
-          "author": {
+          "description": {
             "type": "string",
-            "description": "Author of the Lab",
-            "example": "James Clear"
+            "description": "Description of the Lab",
+            "example": "A book about building good habits"
           },
           "user_id": {
             "type": "string",
@@ -705,7 +705,7 @@
             "example": "cd004999d-7d4b-4167-a9af-0f15783caee5"
           }
         },
-        "required": ["id", "title", "author", "user_id"]
+        "required": ["id", "title", "description", "user_id"]
       },
       "BookInput": {
         "type": "object",
@@ -715,13 +715,13 @@
             "description": "Title of the Lab",
             "example": "Atomic Habits"
           },
-          "author": {
+          "description": {
             "type": "string",
             "description": "Author of the Lab",
             "example": "James Clear"
           }
         },
-        "required": ["title", "author"]
+        "required": ["title", "description"]
       },
       "AuthCredentials": {
         "type": "object",
