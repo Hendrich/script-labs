@@ -1,396 +1,285 @@
-﻿# Script Labs API
+# Script Labs API
 
-A secure and production-ready Script Labs API built with Node.js, Express, PostgreSQL (Supabase), and JWT authentication.
+Backend API untuk Script Labs, dibangun dengan Node.js, Express, PostgreSQL, JWT, dan middleware security. API ini digunakan oleh frontend `script-labs-app` sebagai playground QA automation.
 
-## Quick Start
+## Live Setup
 
-### Prerequisites
-
-- Node.js >= 18.0.0
-- npm >= 8.0.0
-- Supabase account & project
-
-### Installation
-
-1. **Clone & Install**
-
-   ```bash
-   git clone <repository-url>
-   cd script-labs-app
-   npm install
-   ```
-
-2. **Environment Setup**
-
-   ```bash
-   # Copy environment template
-   cp .env.example .env
-
-   # Edit .env with your Supabase credentials
-   ```
-
-3. **Database Setup**
-
-   ```bash
-   # Run the SQL schema in your Supabase SQL editor
-   # File: database/schema_pg.sql (for PostgreSQL)
-   # File: database/schema_my.sql (for MySQL)
-   ```
-
-4. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-## – API Documentation
-
-### Interactive Documentation (Swagger UI)
-
-```
-http://localhost:3000/api-docs
+```text
+Backend API : https://api-script-labs.hendri.me
+Frontend    : https://labs.hendri.me
+Frontend repository: https://github.com/Hendrich/script-labs-app
+Database    : PostgreSQL di Vultr
+Runtime     : Node.js + PM2 di Vultr
+Reverse proxy: Nginx + SSL
+Auth        : Supabase Auth untuk fase transisi
 ```
 
-**Swagger UI provides:**
+## Status Arsitektur Saat Ini
 
-- Interactive API testing
-  cd script-labs-app
-- Authentication support
-- Request/response examples
-- Schema validation
+- Backend sudah berjalan di Vultr.
+- Database Script CRUD sudah memakai PostgreSQL di Vultr.
+- Login/register masih memakai Supabase Auth.
+- JWT backend tetap dipakai untuk akses endpoint private seperti `/api/labs`.
+- Frontend berjalan di Vercel dan diarahkan ke API Vultr.
 
-### ‹ Alternative Documentation
-
-- **OpenAPI Spec**: `openapi-spec.json`
-- **Swagger Guide**: `SWAGGER_UI_GUIDE.md`
-
-## Authentication
-
-The API uses JWT authentication via Supabase:
-
-1. **Register**: `POST /api/auth/register`
-2. **Login**: `POST /api/auth/login`
-3. **Use Token**: Include in header: `Authorization: Bearer <token>`
-
-## API Endpoints
+## Fitur API
 
 ### Authentication
 
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/profile` - Get user profile
-- `PUT /api/auth/profile` - Update user profile
+```text
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+POST /api/auth/verify-token
+```
 
-### Labs Management
+### Labs CRUD
 
-- `GET /api/labs` - Get all user's labs
-- `GET /api/labs/:id` - Get specific lab
-- `POST /api/labs` - Create new lab
-- `PUT /api/labs/:id` - Update lab
-- `DELETE /api/labs/:id` - Delete lab
+```text
+GET    /api/labs
+GET    /api/labs/search
+GET    /api/labs/:id
+POST   /api/labs
+PUT    /api/labs/:id
+DELETE /api/labs/:id
+```
 
 ### System
 
-- `GET /health` - Health check
-- `GET /api/stats` - API statistics (dev only)
-
-## Development
-
-### Scripts
-
-```bash
-npm start          # Production server
-npm run dev        # Development with nodemon
-npm test           # Run tests
-npm run lint       # Code linting
-npm run lint:fix   # Fix linting issues
+```text
+GET /health
+GET /api-docs
 ```
 
-### Project Structure
+## Tech Stack
 
-```
-script-labs/
- backend/
-‚    server.js              # Main server file
-‚    config/
-‚   ‚   ” config.js          # Configuration
-‚    middlewares/           # Custom middlewares
-‚   ‚    authMiddleware.js
-‚   ‚    errorHandler.js
-‚   ‚    logger.js
-‚   ‚    rateLimiter.js
-‚   ‚   ” validation.js
-‚    routes/                # API routes
-‚   ‚    authRoutes.js
-‚   ‚   ” labRoutes.js
-‚   ” db.js                  # Database connection
- database/                  # Database schemas and scripts
-‚    schema_pg.sql          # PostgreSQL schema
-‚    schema_my.sql          # MySQL schema
-‚    query.sql              # Example queries
-‚   ” README.md
- docs/                      # Documentation
-‚    api/                   # API documentation
-‚   ‚    openapi-spec.json
-‚   ‚    OPENAPI_GUIDE.md
-‚   ‚    SWAGGER_INTEGRATION_COMPLETE.md
-‚   ‚   ” SWAGGER_UI_GUIDE.md
-‚    assignments/           # Assignment files
-‚    deployment/            # Deployment guides
-‚   ‚    DEPLOYMENT_GUIDE.md
-‚   ‚   ” CRITICAL_DEPLOYMENT_FIX.md
-‚   ” *.md                   # Other documentation
- postman/                   # Postman collections
-‚    Script_Labs_API_v2.postman_collection.json
-‚    Script-Labs-Environment.postman_environment.json
-‚    POSTMAN_COLLECTION_GUIDE.md
-‚    POSTMAN_COLLECTION_README.md
-‚   ” README.md
- tests/                     # Test files
-‚    test-api.js
-‚   ” README.md
- scripts/                   # Utility scripts
- .env                       # Environment variables
- .env.template              # Environment template
- package.json
-” README.md
-```
+- Node.js
+- Express.js
+- PostgreSQL
+- pg
+- JWT
+- Supabase Auth, sementara/transisi
+- Helmet
+- CORS
+- Joi validation
+- PM2
+- Nginx
 
-## Configuration
+## Environment Variables
 
-### Environment Variables
+Buat file `.env` di root project backend:
 
 ```env
-# Server
-PORT=3000
-NODE_ENV=development
+PORT=5000
+NODE_ENV=production
 
-# Supabase
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+DATABASE_URL=postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db
 
-# JWT
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=your_long_random_secret
 JWT_EXPIRES_IN=24h
 
-# Database
-DB_HOST=your_db_host
-DB_PORT=5432
-DB_NAME=your_db_name
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
+FRONTEND_URL=https://labs.hendri.me
+
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-## Deployment
+> Catatan: `SUPABASE_URL` dan `SUPABASE_ANON_KEY` masih wajib selama login/register masih memakai Supabase Auth.
 
-### Render.com (Recommended)
-
-1. Connect your GitHub repository
-2. Set environment variables
-3. Deploy automatically
-
-### Vercel
-
-1. Install Vercel CLI
-2. Configure `vercel.json`
-3. Deploy with `vercel --prod`
-
-### Other Platforms
-
-- Heroku
-- Railway
-- DigitalOcean App Platform
-
-See `docs/deployment/DEPLOYMENT_GUIDE.md` for detailed instructions.
-
-## ðŸ§ª Testing
-
-### Manual Testing
-
-1. **Start server**: `npm run dev`
-2. **Open Swagger UI**: `http://localhost:3000/api-docs`
-3. **Test endpoints interactively**
-
-### Automated Testing
+## Local Development
 
 ```bash
-npm test           # Run all tests
-npm run test:watch # Watch mode
-```
-
-## Security Features
-
-- **Helmet**: Security headers
-- **Rate Limiting**: API protection
-- **CORS**: Cross-origin configuration
-- **Input Validation**: Joi schema validation
-- **JWT Authentication**: Secure token-based auth
-- **Input Sanitization**: XSS protection
-
-### Cross-Site Request Forgery (CSRF)
-
-Aplikasi sekarang 100% stateless (tidak memakai `express-session`). Perlindungan CSRF bergantung pada:
-
-1. JWT wajib di header `Authorization: Bearer <token>` (tidak otomatis terkirim oleh browser seperti cookie)
-2. Pemeriksaan Origin/Referer untuk metode state‑changing (POST/PUT/PATCH/DELETE)
-3. CORS hanya mengizinkan origin yang diset di konfigurasi
-
-Karena tidak ada session cookie maupun cookie auth yang dikirim otomatis lintas situs, risiko CSRF sangat rendah. Token CSRF terpisah tidak diperlukan saat ini. Jika nanti berpindah ke model auth berbasis cookie, tambahkan kembali lapisan token CSRF.
-
-### SQL Injection Mitigation
-
-All database interactions use parameterized queries via the `pg` client. Dynamic queries were refactored to remove concatenated placeholder arithmetic that static analysis tools (e.g., Snyk) sometimes flag as potential SQL injection. Update operations explicitly whitelist allowed fields (`title`, `description`) before constructing the `SET` clause. If Snyk still reports a SQLi warning, it is a false positive—no untrusted input is interpolated directly into SQL text.
-
-### Reporting Security Issues
-
-If you discover a vulnerability that is not covered, please open a GitHub Issue with steps to reproduce, or contact the maintainer directly. For high‑severity findings, avoid public disclosure until a patch is prepared.
-
-## Troubleshooting
-
-### Common Issues & Solutions
-
-#### **429 Too Many Requests Error**
-
-```json
-{
-  "success": false,
-  "error": {
-    "message": "Too many operation attempts from this IP",
-    "code": "RATE_LIMIT_EXCEEDED"
-  }
-}
-```
-
-**Solutions:**
-
-1. **Wait**: Rate limits reset after the window expires
-2. **Development**: Rate limits are more permissive in development mode
-3. **Check Requests**: Ensure frontend doesn't send duplicate requests
-4. **Network**: Clear browser cache and restart development server
-
-#### **Validation Error (Email & Password Required)**
-
-```json
-{
-  "success": false,
-  "error": {
-    "message": "Validation Error: Email is required, Password is required"
-  }
-}
-```
-
-**Solutions:**
-
-1. **Check Frontend**: Ensure form sends `email` and `password` fields
-2. **Content-Type**: Verify `Content-Type: application/json` header
-3. **Data Format**: Ensure JSON data is properly formatted
-4. **Network**: Check browser dev tools for request payload
-
-#### **CORS Issues**
-
-- **Local Development**: Ensure server runs on `http://localhost:3000`
-- **Production**: Update CORS configuration in `backend/config/config.js`
-- **Mixed Content**: Don't mix HTTP and HTTPS requests
-
-#### **Connection Issues**
-
-1. **Local Server**: Ensure `npm run dev` is running
-2. **Port**: Verify server runs on correct port (3000)
-3. **Firewall**: Check Windows Firewall settings
-4. **Network**: Try accessing `http://localhost:3000/health` directly
-
-### **Debug Tools**
-
-#### **Test API Script**
-
-```bash
-# Test both local and production
-node test-api.js
-
-# Test local only
-node test-api.js local
-
-# Test production only
-node test-api.js production
-```
-
-#### **Swagger UI Testing**
-
-1. Open `http://localhost:3000/api-docs`
-2. Test individual endpoints interactively
-3. Use "Authorize" button for authentication
-4. Check request/response in browser dev tools
-
-#### **Manual Testing with curl**
-
-```bash
-# Health check
-curl http://localhost:3000/health
-
-# Register
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
-
-# Login
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
-```
-
-### **Environment Check**
-
-```bash
-# Check if server is running
-curl http://localhost:3000/health
-
-# Check API stats (development only)
-curl http://localhost:3000/api/stats
-
-# View server logs
+git clone https://github.com/Hendrich/script-labs.git
+cd script-labs
+npm install
 npm run dev
 ```
 
-## ‹ TODO & Roadmap
+Default local API:
 
-- [ ] User roles and permissions
-- [ ] Lab categories and tags
-- [ ] Search and filtering
-- [ ] File upload for lab covers
-- [ ] API versioning
-- [ ] Comprehensive test coverage
+```text
+http://localhost:3000
+```
 
-## ðŸ¤ Contributing
+Jika ingin memakai port 5000 secara local, set di `.env`:
 
-1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+```env
+PORT=5000
+```
 
-## „ License
+## Production Deployment on Vultr
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+### 1. Clone Repository
 
-## Support
+```bash
+cd /root
+git clone https://github.com/Hendrich/script-labs.git
+cd script-labs
+npm install
+```
 
-- **Author**: Hendri Christianto
-- **Email**: hendri.christianto24@gmail.com
-- **Documentation**: Check `SWAGGER_UI_GUIDE.md`
-- **Issues**: Create GitHub issue
+### 2. Setup PostgreSQL
 
----
+```sql
+CREATE DATABASE scriptlabs_db;
+CREATE USER scriptlabs_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE scriptlabs_db TO scriptlabs_user;
+ALTER DATABASE scriptlabs_db OWNER TO scriptlabs_user;
+```
 
-## Documentation Files
+### 3. Minimal Table Schema
 
-- `SWAGGER_UI_GUIDE.md` - Swagger UI usage guide
-- `DEPLOYMENT_GUIDE.md` - Deployment instructions
-- `OPENAPI_GUIDE.md` - OpenAPI specification guide
-- `PROJECT_SUMMARY.md` - Project overview
-- `IMPLEMENTATION_CHECKLIST.md` - Development checklist
+```sql
+CREATE TABLE IF NOT EXISTS labs (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  user_id UUID NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
 
----
+### 4. Run with PM2
 
-**Happy coding! **
+```bash
+cd /root/script-labs
+pm2 start backend/server.js --name script-labs-api
+pm2 save
+pm2 status
+```
 
-## trigger git action
+Test local API from VPS:
+
+```bash
+curl http://localhost:5000/health
+```
+
+### 5. Nginx Reverse Proxy
+
+Example config:
+
+```nginx
+server {
+    listen 80;
+    server_name api-script-labs.hendri.me;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Enable config:
+
+```bash
+ln -s /etc/nginx/sites-available/script-labs-api /etc/nginx/sites-enabled/
+nginx -t
+systemctl reload nginx
+```
+
+### 6. SSL
+
+```bash
+certbot --nginx -d api-script-labs.hendri.me
+```
+
+Test public API:
+
+```bash
+curl https://api-script-labs.hendri.me/health
+```
+
+## Backup Database
+
+Manual backup:
+
+```bash
+mkdir -p /root/backups/script-labs
+pg_dump "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" > /root/backups/script-labs/scriptlabs_backup.sql
+ls -lh /root/backups/script-labs
+```
+
+## Security Notes
+
+- JWT dikirim via `Authorization: Bearer <token>`.
+- CORS hanya mengizinkan origin yang dikonfigurasi melalui `FRONTEND_URL`.
+- State-changing request dicek dengan Origin/Referer.
+- Query database memakai parameterized query dari `pg`.
+- Rate limiter diterapkan untuk endpoint auth.
+- Helmet dipakai untuk security headers.
+
+## Troubleshooting
+
+### Health check gagal
+
+```bash
+pm2 status
+pm2 logs script-labs-api --lines 100
+curl http://localhost:5000/health
+```
+
+### CORS error
+
+Pastikan `.env` backend:
+
+```env
+FRONTEND_URL=https://labs.hendri.me
+```
+
+Restart PM2:
+
+```bash
+pm2 restart script-labs-api --update-env
+```
+
+Test preflight:
+
+```bash
+curl -i -X OPTIONS https://api-script-labs.hendri.me/api/auth/register \
+  -H "Origin: https://labs.hendri.me" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type"
+```
+
+### SSL certificate mismatch
+
+Pastikan DNS `api-script-labs.hendri.me` mengarah ke IP Vultr dan jalankan:
+
+```bash
+certbot --nginx -d api-script-labs.hendri.me
+```
+
+### Labs gagal fetch
+
+Cek apakah table `labs` sudah ada:
+
+```bash
+psql "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db"
+\dt
+```
+
+Jika belum ada, buat table `labs` sesuai schema di atas.
+
+## Roadmap
+
+- [x] Deploy backend ke Vultr
+- [x] Setup Nginx reverse proxy dan SSL
+- [x] Setup PostgreSQL Vultr
+- [x] Script CRUD memakai PostgreSQL Vultr
+- [ ] Ganti Supabase Auth ke local/dummy auth
+- [ ] Tambah products API
+- [ ] Tambah checkout dummy API
+- [ ] Tambah `/api/test/reset` untuk automation testing
+- [ ] Tambah seed data deterministic
+
+## License
+
+MIT License.
