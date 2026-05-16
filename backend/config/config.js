@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const config = {
   // Server Configuration
@@ -26,8 +26,7 @@ const config = {
       const allowedOrigins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://localhost:5173", // <--- tambahkan ini!
-        //"https://lab-catalog-app-z8p8.onrender.com",
+        "http://localhost:5173",
         process.env.FRONTEND_URL,
       ].filter(Boolean);
 
@@ -45,33 +44,22 @@ const config = {
     allowedHeaders: ["Content-Type", "Authorization"],
   },
 
-  // Supabase Configuration
-  supabase: {
-    url: process.env.SUPABASE_URL,
-    anonKey: process.env.SUPABASE_ANON_KEY,
-  },
-
   // Rate Limiting Configuration
   rateLimit: {
     windowMs:
-      process.env.NODE_ENV === "development" ? 60 * 1000 : 15 * 60 * 1000, // 1 minute in dev, 15 min in prod
-    maxRequests: process.env.NODE_ENV === "development" ? 200 : 100, // 200 in dev, 100 in prod
-    maxAuthRequests: process.env.NODE_ENV === "development" ? 50 : 5, // 50 in dev, 5 in prod
+      process.env.NODE_ENV === "development" ? 60 * 1000 : 15 * 60 * 1000,
+    maxRequests: process.env.NODE_ENV === "development" ? 200 : 100,
+    maxAuthRequests: process.env.NODE_ENV === "development" ? 50 : 5,
   },
 };
 
 // Validate required environment variables
-const requiredEnvVars = [
-  "DATABASE_URL",
-  "JWT_SECRET",
-  "SUPABASE_URL",
-  "SUPABASE_ANON_KEY",
-];
+const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET"];
 
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 
 if (missingVars.length > 0) {
-  console.error("âŒ Missing required environment variables:");
+  console.error("Missing required environment variables:");
   missingVars.forEach((varName) => {
     console.error(`   - ${varName}`);
   });
