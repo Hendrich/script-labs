@@ -1,6 +1,7 @@
-﻿const express = require("express");
-const { createClient } = require("@supabase/supabase-js");
+const express = require("express");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const pool = require("../db");
 const config = require("../config/config");
 const { validateAuth } = require("../middlewares/validation");
 const { createRateLimiter } = require("../middlewares/rateLimiter");
@@ -8,9 +9,6 @@ const { securityLogger } = require("../middlewares/logger");
 const { AppError } = require("../middlewares/errorHandler");
 
 const router = express.Router();
-
-// Initialize Supabase client
-const supabase = createClient(config.supabase.url, config.supabase.anonKey);
 
 // Stricter rate limiter: 5 attempts / 15m for register & login (per IP). Bypass in tests.
 const authAttemptLimiter =
@@ -23,60 +21,82 @@ const authAttemptLimiter =
         false
       );
 
-// Remove global strict rate limiting; will apply only to register and login endpoints
+const buildToken = (user) =>
+  jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role || "user",
+      status: user.status || "active",
+    },
+    config.jwt.secret,
+    {
+      expiresIn: config.jwt.expiresIn,
+    }
+  );
+
+const sanitizeUser = (user) => ({
+  id: user.id,
+  email: user.email,
+  role: user.role || "user",
+  status: user.status || "active",
+});
 
 /**
  * @route   POST /api/auth/register
- * @desc    Register a new user via Supabase
+ * @desc    Register a new user in local PostgreSQL database
  * @access  Public
  */
 router.post(
   "/register",
-  validateAuth, // validate first
+  validateAuth,
   authAttemptLimiter,
   securityLogger("USER_REGISTRATION"),
   async (req, res, next) => {
     try {
-      if (process.env.NODE_ENV !== "test") {
-        console.log("[DEBUG] Register body:", req.body);
-      }
-      const { email, password } = req.body;
+      const email = String(req.body.email || "").trim().toLowerCase();
+      const { password } = req.body;
 
-      // Register user with Supabase
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const existingUser = await pool.query(
+        "SELECT id FROM users WHERE email = $1",
+        [email]
+      );
 
-      if (error) {
-        if (process.env.NODE_ENV !== "test") {
-          console.error("Registration error (suppressed):", error.message);
-        }
-        return res.status(400).json({
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json({
           success: false,
           error: {
-            message: "Invalid email or password",
-            code: "AUTH_FAILED",
+            message: "Email already registered",
+            code: "EMAIL_EXISTS",
           },
           timestamp: new Date().toISOString(),
         });
       }
 
+      const passwordHash = await bcrypt.hash(password, 12);
+      const { rows } = await pool.query(
+        `INSERT INTO users (email, password_hash, role, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, NOW(), NOW())
+         RETURNING id, email, role, status, created_at`,
+        [email, passwordHash, "user", "active"]
+      );
+
+      const user = rows[0];
+      const token = buildToken(user);
+
       res.status(201).json({
         success: true,
         message: "User registered successfully",
         data: {
-          user: {
-            id: data.user?.id,
-            email: data.user?.email,
-          },
-          requiresConfirmation: !data.session,
+          token,
+          user: sanitizeUser(user),
+          requiresConfirmation: false,
         },
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
       if (process.env.NODE_ENV !== "test") {
-        console.error("âŒ Error in registration endpoint:", err.message);
+        console.error("Error in registration endpoint:", err.message);
       }
       next(new AppError("Registration endpoint error", 500));
     }
@@ -85,7 +105,7 @@ router.post(
 
 /**
  * @route   POST /api/auth/login
- * @desc    Login user via Supabase
+ * @desc    Login user via local PostgreSQL database
  * @access  Public
  */
 router.post(
@@ -95,21 +115,16 @@ router.post(
   securityLogger("USER_LOGIN"),
   async (req, res, next) => {
     try {
-      if (process.env.NODE_ENV !== "test") {
-        console.log("[DEBUG] Login body:", req.body);
-      }
-      const { email, password } = req.body;
+      const email = String(req.body.email || "").trim().toLowerCase();
+      const { password } = req.body;
 
-      // Login user with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { rows } = await pool.query(
+        "SELECT id, email, password_hash, role, status FROM users WHERE email = $1",
+        [email]
+      );
 
-      if (error) {
-        if (process.env.NODE_ENV !== "test") {
-          console.error("Login error (suppressed):", error.message);
-        }
+      const user = rows[0];
+      if (!user) {
         return res.status(401).json({
           success: false,
           error: {
@@ -120,33 +135,43 @@ router.post(
         });
       }
 
-      // Generate our own JWT token for backend authentication
-      const token = jwt.sign(
-        {
-          userId: data.user.id,
-          email: data.user.email,
-        },
-        config.jwt.secret,
-        {
-          expiresIn: config.jwt.expiresIn,
-        }
-      );
+      if (user.status === "locked") {
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: "User account is locked",
+            code: "USER_LOCKED",
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+      if (!validPassword) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            message: "Invalid email or password",
+            code: "AUTH_FAILED",
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const token = buildToken(user);
 
       res.status(200).json({
         success: true,
         message: "Login successful",
         data: {
           token,
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-          },
+          user: sanitizeUser(user),
         },
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
       if (process.env.NODE_ENV !== "test") {
-        console.error("âŒ Error in login endpoint:", err.message);
+        console.error("Error in login endpoint:", err.message);
       }
       next(new AppError("Login endpoint error", 500));
     }
@@ -155,10 +180,8 @@ router.post(
 
 /**
  * @route   POST /api/auth/logout
- * @desc    Logout user (handled by Supabase)
+ * @desc    Logout user, handled client-side by removing JWT
  * @access  Public
- * @note    This endpoint is primarily for documentation purposes
- *          as logout is handled client-side via Supabase
  */
 router.post(
   "/logout",
@@ -167,15 +190,15 @@ router.post(
     try {
       res.status(200).json({
         success: true,
-        message: "Logout should be handled via Supabase client-side",
+        message: "Logout successful. Remove the token on the client side.",
         data: {
-          note: "Use Supabase auth.signOut() method on the frontend",
+          note: "This API uses stateless JWT auth.",
         },
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
       if (process.env.NODE_ENV !== "test") {
-        console.error("âŒ Error in logout endpoint:", err.message);
+        console.error("Error in logout endpoint:", err.message);
       }
       next(new AppError("Logout endpoint error", 500));
     }
@@ -192,19 +215,25 @@ router.get(
   require("../middlewares/authMiddleware"),
   async (req, res, next) => {
     try {
-      // Return basic user info from the JWT token
+      const { rows } = await pool.query(
+        "SELECT id, email, role, status, created_at FROM users WHERE id = $1",
+        [req.user_id]
+      );
+
       res.status(200).json({
         success: true,
         data: {
-          user_id: req.user_id,
-          email: req.user_email || "N/A",
-          authenticated: true,
+          user: rows[0] || {
+            id: req.user_id,
+            email: req.user_email || "N/A",
+            authenticated: true,
+          },
         },
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
       if (process.env.NODE_ENV !== "test") {
-        console.error("âŒ Error fetching user info:", err.message);
+        console.error("Error fetching user info:", err.message);
       }
       next(new AppError("Failed to fetch user info", 500));
     }
@@ -221,12 +250,12 @@ router.post(
   require("../middlewares/authMiddleware"),
   async (req, res, next) => {
     try {
-      // If we reach here, the token is valid (thanks to authMiddleware)
       res.status(200).json({
         success: true,
         data: {
           valid: true,
           user_id: req.user_id,
+          email: req.user_email,
           expires_at: req.token_expires || "N/A",
         },
         message: "Token is valid",
@@ -234,7 +263,7 @@ router.post(
       });
     } catch (err) {
       if (process.env.NODE_ENV !== "test") {
-        console.error("âŒ Error verifying token:", err.message);
+        console.error("Error verifying token:", err.message);
       }
       next(new AppError("Token verification failed", 401));
     }
