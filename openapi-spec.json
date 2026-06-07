@@ -11,8 +11,12 @@
   },
   "servers": [
     {
-      "url": "https://api-script-labs.hendri.me",
-      "description": "Production API on Vultr"
+      "url": "/",
+      "description": "Current API host"
+    },
+    {
+      "url": "https://api.hendri.me",
+      "description": "Production API"
     },
     {
       "url": "http://localhost:5000",
@@ -324,7 +328,12 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 }
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 100
+            }
           },
           {
             "name": "search",
@@ -413,7 +422,12 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 }
+            "schema": {
+              "type": "integer",
+              "default": 10,
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -607,7 +621,10 @@
         "properties": {
           "id": { "type": "integer", "example": 14 },
           "title": { "type": "string", "example": "Cypress Checkout Test" },
-          "description": { "type": "string", "example": "Automation script for add-to-cart and checkout flow" },
+          "description": {
+            "type": "string",
+            "example": "Automation script for add-to-cart and checkout flow"
+          },
           "user_id": { "type": "string", "format": "uuid" },
           "created_at": { "type": "string", "format": "date-time" },
           "updated_at": { "type": "string", "format": "date-time" }
@@ -643,7 +660,10 @@
         "type": "object",
         "properties": {
           "success": { "type": "boolean", "example": true },
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Lab" } },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Lab" }
+          },
           "pagination": { "$ref": "#/components/schemas/Pagination" },
           "timestamp": { "type": "string", "format": "date-time" }
         }
@@ -674,9 +694,14 @@
           "success": { "type": "boolean", "example": true },
           "data": {
             "type": "object",
-            "properties": { "id": { "oneOf": [{ "type": "integer" }, { "type": "string" }] } }
+            "properties": {
+              "id": { "oneOf": [{ "type": "integer" }, { "type": "string" }] }
+            }
           },
-          "message": { "type": "string", "example": "lab deleted successfully" },
+          "message": {
+            "type": "string",
+            "example": "lab deleted successfully"
+          },
           "timestamp": { "type": "string", "format": "date-time" }
         }
       },
@@ -748,11 +773,19 @@
             "examples": {
               "no_token": {
                 "summary": "No token provided",
-                "value": { "success": false, "error": { "message": "No token provided" }, "timestamp": "2026-05-16T07:23:29.336Z" }
+                "value": {
+                  "success": false,
+                  "error": { "message": "No token provided" },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
+                }
               },
               "invalid_token": {
                 "summary": "Invalid token",
-                "value": { "success": false, "error": { "message": "Invalid token" }, "timestamp": "2026-05-16T07:23:29.336Z" }
+                "value": {
+                  "success": false,
+                  "error": { "message": "Invalid token" },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
+                }
               }
             }
           }
@@ -778,7 +811,10 @@
             "schema": { "$ref": "#/components/schemas/ErrorResponse" },
             "example": {
               "success": false,
-              "error": { "message": "Too many authentication attempts. Please try again later", "code": "RATE_LIMIT_EXCEEDED" },
+              "error": {
+                "message": "Too many authentication attempts. Please try again later",
+                "code": "RATE_LIMIT_EXCEEDED"
+              },
               "timestamp": "2026-05-16T07:23:29.336Z"
             }
           }

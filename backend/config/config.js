@@ -12,7 +12,8 @@ if (isTest) {
     process.env.DATABASE_URL ||
     "postgresql://test_user:test_password@localhost:5432/scriptlabs_test_db";
   process.env.JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret";
-  process.env.FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+  process.env.FRONTEND_URL =
+    process.env.FRONTEND_URL || "http://localhost:5173";
 }
 
 const config = {
@@ -43,6 +44,9 @@ const config = {
         "http://127.0.0.1:3000",
         "http://localhost:5173",
         process.env.FRONTEND_URL,
+        "https://labs.hendri.me",
+        "https://api.hendri.me",
+        "https://api-script-labs.hendri.me",
       ].filter(Boolean);
 
       if (allowedOrigins.indexOf(origin) !== -1) {
@@ -78,7 +82,7 @@ if (missingVars.length > 0) {
     console.error(`   - ${varName}`);
   });
   console.error(
-    "\nPlease check your .env file and ensure all required variables are set."
+    "\nPlease check your .env file and ensure all required variables are set.",
   );
   process.exit(1);
 }
