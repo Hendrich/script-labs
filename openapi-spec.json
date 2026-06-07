@@ -11,12 +11,12 @@
   },
   "servers": [
     {
-      "url": "/",
-      "description": "Current API host"
+      "url": "https://api-script-labs.hendri.me",
+      "description": "Production API on Vultr"
     },
     {
       "url": "https://api.hendri.me",
-      "description": "Production API"
+      "description": "Legacy API domain"
     },
     {
       "url": "http://localhost:5000",
