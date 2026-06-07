@@ -2,368 +2,71 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Script Labs API",
-    "description": "A secure Script Labs API built with Node.js and Express, featuring JWT authentication via Supabase and CRUD operations for Labs management.",
-    "version": "1.0.0",
+    "description": "Script Labs API for a QA automation playground. The API uses local PostgreSQL users, bcrypt password hashing, backend-issued JWT authentication, and PostgreSQL-backed Script Labs CRUD operations.",
+    "version": "1.1.0",
     "contact": {
-      "name": "example",
-      "email": "example@gmail.com"
+      "name": "Hendri Christianto",
+      "email": "hendri.christianto24@gmail.com"
     }
   },
   "servers": [
     {
-      "url": "http://localhost:3000",
-      "description": "Local development server"
+      "url": "https://api-script-labs.hendri.me",
+      "description": "Production API on Vultr"
     },
     {
-      "url": "https://script-Labs-app-z8p8.onrender.com",
-      "description": "Production server on Render"
+      "url": "http://localhost:5000",
+      "description": "Local development server"
     }
   ],
-  "security": [
+  "tags": [
     {
-      "BearerAuth": []
+      "name": "System",
+      "description": "Health and system endpoints"
+    },
+    {
+      "name": "Authentication",
+      "description": "Local PostgreSQL authentication endpoints"
+    },
+    {
+      "name": "Labs",
+      "description": "Authenticated Script Labs CRUD endpoints"
     }
   ],
   "paths": {
-    "/api/Labs/search": {
+    "/health": {
       "get": {
-        "summary": "Search Labs by title or description",
-        "description": "Search Labs for the authenticated user by title or description. Tidak mengubah database.",
-        "tags": ["Labs"],
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "description": "Search query (title or description)",
-            "required": false,
-            "schema": { "type": "string" }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number (default: 1)",
-            "required": false,
-            "schema": { "type": "integer", "default": 1 }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Items per page (default: 10, max: 100)",
-            "required": false,
-            "schema": { "type": "integer", "default": 10, "maximum": 100 }
-          }
-        ],
+        "summary": "Health check",
+        "description": "Check whether the API server is running.",
+        "tags": ["System"],
+        "security": [],
         "responses": {
           "200": {
-            "description": "Search results returned successfully",
+            "description": "Server is healthy",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": {
-                      "type": "array",
-                      "items": { "$ref": "#/components/schemas/Lab" }
-                    },
-                    "pagination": {
-                      "type": "object",
-                      "properties": {
-                        "page": { "type": "integer", "example": 1 },
-                        "limit": { "type": "integer", "example": 10 },
-                        "total": { "type": "integer", "example": 2 },
-                        "totalPages": { "type": "integer", "example": 1 }
-                      }
-                    },
-                    "search_query": { "type": "string", "example": "atomic" },
-                    "timestamp": { "type": "string", "format": "date-time" }
-                  }
+                  "$ref": "#/components/schemas/HealthResponse"
                 },
                 "example": {
                   "success": true,
-                  "data": [
-                    {
-                      "id": 14,
-                      "title": "Atomic Habits",
-                      "description": "James Clear",
-                      "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
-                    }
-                  ],
-                  "pagination": {
-                    "page": 1,
-                    "limit": 10,
-                    "total": 1,
-                    "totalPages": 1
-                  },
-                  "search_query": "atomic",
-                  "timestamp": "2025-07-31T10:00:00.000Z"
+                  "message": "Server is healthy",
+                  "timestamp": "2026-05-16T07:23:29.336Z",
+                  "version": "1.0.0",
+                  "nodeEnv": "production"
                 }
               }
             }
-          },
-          "401": { "$ref": "#/components/responses/UnauthorizedError" },
-          "500": { "$ref": "#/components/responses/ServerError" }
-        }
-      }
-    },
-    "/api/Labs": {
-      "get": {
-        "summary": "Get all Labs",
-        "description": "Retrieve all Labs belonging to the authenticated user",
-        "tags": ["Labs"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of Labs retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Lab"
-                  }
-                },
-                "example": [
-                  {
-                    "id": 14,
-                    "title": "buku menari",
-                    "description": "jojo",
-                    "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
-                  },
-                  {
-                    "id": 15,
-                    "title": "buku mewarnai",
-                    "description": "santi",
-                    "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
-                  }
-                ]
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      },
-      "post": {
-        "summary": "Add a new Lab",
-        "description": "Create a new Lab entry for the authenticated user",
-        "tags": ["Labs"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BookInput"
-              },
-              "example": {
-                "title": "Atomic Habits",
-                "description": "book about to grow up your habbit"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Lab created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Lab"
-                },
-                "example": {
-                  "id": 25,
-                  "title": "Atomic Habits",
-                  "description": "book about to grow up your habbit",
-                  "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request - missing required fields",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "message": "Title and description are required"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      }
-    },
-    "/api/Labs/{id}": {
-      "put": {
-        "summary": "Update a Lab",
-        "description": "Update an existing Lab (user can only update their own Labs)",
-        "tags": ["Labs"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Lab ID",
-            "schema": {
-              "type": "integer",
-              "example": 14
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BookInput"
-              },
-              "example": {
-                "title": "Atomic Habits Updated",
-                "description": "book about to grow up your habbit"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Lab updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Lab"
-                },
-                "example": {
-                  "id": 14,
-                  "title": "Atomic Habits Updated",
-                  "description": "book about to grow up your habbit",
-                  "user_id": "cd004999d-7d4b-4167-a9af-0f15783caee5"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request - missing required fields",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "message": "All fields are required"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "description": "Lab not found or unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "message": "Lab not found or unauthorized"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete a Lab",
-        "description": "Delete an existing Lab (user can only delete their own Labs)",
-        "tags": ["Labs"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Lab ID",
-            "schema": {
-              "type": "integer",
-              "example": 14
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Lab deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
-                },
-                "example": {
-                  "message": "Lab deleted successfully"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "description": "Lab not found or unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                },
-                "example": {
-                  "message": "Lab not found or unauthorized"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
           }
         }
       }
     },
     "/api/auth/register": {
       "post": {
-        "summary": "Register new user",
-        "description": "Register a new user account via backend API (using Supabase server-side)",
+        "summary": "Register a local user",
+        "description": "Create a new local user in PostgreSQL. Passwords are stored as bcrypt hashes. For public demo usage, prefer the provided demo accounts instead of creating many random accounts.",
         "tags": ["Authentication"],
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -372,8 +75,8 @@
                 "$ref": "#/components/schemas/AuthCredentials"
               },
               "example": {
-                "email": "example@gmail.com",
-                "password": "OQS4iqyWkAdBXgsS"
+                "email": "new_user@example.com",
+                "password": "script_sauce"
               }
             }
           }
@@ -384,64 +87,62 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "User registered successfully",
+                  "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "user": {
+                      "id": "4c3d8f6a-1f87-4c41-a3d7-fdb8f92c4021",
+                      "email": "new_user@example.com",
+                      "role": "user",
+                      "status": "active"
                     },
-                    "message": {
-                      "type": "string",
-                      "example": "User registered successfully"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "format": "uuid"
-                            },
-                            "email": {
-                              "type": "string",
-                              "format": "email"
-                            }
-                          }
-                        },
-                        "requiresConfirmation": {
-                          "type": "boolean"
-                        }
-                      }
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    }
-                  }
+                    "requiresConfirmation": false
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
                 }
               }
             }
           },
           "400": {
-            "description": "Bad request - validation error",
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "409": {
+            "description": "Email already registered",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "message": "Email already registered",
+                    "code": "EMAIL_EXISTS"
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
                 }
               }
             }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
           }
         }
       }
     },
     "/api/auth/login": {
       "post": {
-        "summary": "Login user",
-        "description": "Authenticate user and receive JWT token via backend API (using Supabase server-side)",
+        "summary": "Login local user",
+        "description": "Authenticate a local PostgreSQL user with bcrypt password verification and receive a backend-issued JWT. Demo users include standard_user@example.com, locked_user@example.com, problem_user@example.com, and admin@example.com.",
         "tags": ["Authentication"],
+        "security": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -450,66 +151,106 @@
                 "$ref": "#/components/schemas/AuthCredentials"
               },
               "example": {
-                "email": "example@gmail.com",
-                "password": "OQS4iqyWkAdBXgsS"
+                "email": "standard_user@example.com",
+                "password": "script_sauce"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Authentication successful",
+            "description": "Login successful",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Login successful"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "token": {
-                          "type": "string",
-                          "description": "JWT access token",
-                          "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                        },
-                        "user": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "format": "uuid"
-                            },
-                            "email": {
-                              "type": "string",
-                              "format": "email"
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
+                  "$ref": "#/components/schemas/AuthSuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Login successful",
+                  "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "user": {
+                      "id": "d6b7437f-798a-4895-a46a-db87c561f4be",
+                      "email": "standard_user@example.com",
+                      "role": "user",
+                      "status": "active"
                     }
-                  }
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
                 }
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
           "401": {
-            "description": "Invalid credentials",
+            "description": "Invalid email or password",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "message": "Invalid email or password",
+                    "code": "AUTH_FAILED"
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "User account is locked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "message": "User account is locked",
+                    "code": "USER_LOCKED"
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout user",
+        "description": "Stateless JWT logout endpoint. The client should remove the stored token.",
+        "tags": ["Authentication"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiMessageResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Logout successful. Remove the token on the client side.",
+                  "data": {
+                    "note": "This API uses stateless JWT auth."
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
                 }
               }
             }
@@ -519,54 +260,26 @@
     },
     "/api/auth/me": {
       "get": {
-        "summary": "Get current user info",
-        "description": "Get current authenticated user information",
+        "summary": "Get current user",
+        "description": "Return current authenticated user information from the JWT and users table.",
         "tags": ["Authentication"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "User information retrieved successfully",
+            "description": "Current user returned successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user_id": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "email": {
-                          "type": "string",
-                          "format": "email"
-                        },
-                        "authenticated": {
-                          "type": "boolean",
-                          "example": true
-                        }
-                      }
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    }
-                  }
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               }
             }
           },
           "401": {
             "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
           }
         }
       }
@@ -574,50 +287,16 @@
     "/api/auth/verify-token": {
       "post": {
         "summary": "Verify JWT token",
-        "description": "Verify if a JWT token is valid",
+        "description": "Verify whether a Bearer JWT token is valid.",
         "tags": ["Authentication"],
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "Token verification successful",
+            "description": "Token is valid",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "valid": {
-                          "type": "boolean",
-                          "example": true
-                        },
-                        "user_id": {
-                          "type": "string",
-                          "format": "uuid"
-                        },
-                        "expires_at": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Token is valid"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    }
-                  }
+                  "$ref": "#/components/schemas/VerifyTokenResponse"
                 }
               }
             }
@@ -628,44 +307,195 @@
         }
       }
     },
-    "/health": {
+    "/api/labs": {
       "get": {
-        "summary": "Health check",
-        "description": "Check if the server is running and healthy",
-        "tags": ["System"],
+        "summary": "Get labs",
+        "description": "Retrieve authenticated user's labs with pagination and optional search query.",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "minimum": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Search by title or description"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Server is healthy",
+            "description": "Labs returned successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Server is healthy"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "version": {
-                      "type": "string",
-                      "example": "1.0.0"
-                    },
-                    "nodeEnv": {
-                      "type": "string",
-                      "example": "production"
-                    }
-                  }
+                  "$ref": "#/components/schemas/LabListResponse"
                 }
               }
             }
+          },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "summary": "Create lab",
+        "description": "Create a new lab for the authenticated user.",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LabInput" },
+              "example": {
+                "title": "Cypress Checkout Test",
+                "description": "Automation script for add-to-cart and checkout flow"
+              }
+            }
           }
+        },
+        "responses": {
+          "201": { "$ref": "#/components/responses/LabCreated" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "409": {
+            "description": "Duplicate lab",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "error": {
+                    "message": "Lab with this title and description already exists"
+                  },
+                  "timestamp": "2026-05-16T07:23:29.336Z"
+                }
+              }
+            }
+          },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/labs/search": {
+      "get": {
+        "summary": "Search labs",
+        "description": "Search authenticated user's labs by title or description.",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Search keyword"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1, "minimum": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results returned successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LabSearchResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/api/labs/{id}": {
+      "get": {
+        "summary": "Get lab by ID",
+        "description": "Retrieve one lab owned by the authenticated user.",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/LabId" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/LabReturned" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "404": { "$ref": "#/components/responses/NotFoundError" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "put": {
+        "summary": "Update lab",
+        "description": "Update title and/or description for a lab owned by the authenticated user.",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/LabId" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LabUpdateInput" },
+              "example": {
+                "title": "Updated Cypress Checkout Test",
+                "description": "Updated automation scenario"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "$ref": "#/components/responses/LabUpdated" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "404": { "$ref": "#/components/responses/NotFoundError" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "delete": {
+        "summary": "Delete lab",
+        "description": "Delete a lab owned by the authenticated user.",
+        "tags": ["Labs"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/LabId" }],
+        "responses": {
+          "200": {
+            "description": "Lab deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DeleteLabResponse" },
+                "example": {
+                  "success": true,
+                  "data": { "id": "14" },
+                  "message": "lab deleted successfully",
+                  "timestamp": "2026-05-16T07:23:29.336Z"
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/UnauthorizedError" },
+          "404": { "$ref": "#/components/responses/NotFoundError" },
+          "500": { "$ref": "#/components/responses/ServerError" }
         }
       }
     }
@@ -676,52 +506,29 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT token obtained from Supabase authentication"
+        "description": "JWT token returned by POST /api/auth/login or POST /api/auth/register"
+      }
+    },
+    "parameters": {
+      "LabId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "Lab ID",
+        "schema": { "type": "integer", "example": 14 }
       }
     },
     "schemas": {
-      "Lab": {
+      "HealthResponse": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "description": "Unique identifier for the Lab",
-            "example": 14
-          },
-          "title": {
-            "type": "string",
-            "description": "Title of the Lab",
-            "example": "Atomic Habits"
-          },
-          "description": {
-            "type": "string",
-            "description": "Description of the Lab",
-            "example": "A book about building good habits"
-          },
-          "user_id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "ID of the user who owns this Lab",
-            "example": "cd004999d-7d4b-4167-a9af-0f15783caee5"
-          }
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string", "example": "Server is healthy" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "version": { "type": "string", "example": "1.0.0" },
+          "nodeEnv": { "type": "string", "example": "production" }
         },
-        "required": ["id", "title", "description", "user_id"]
-      },
-      "BookInput": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "description": "Title of the Lab",
-            "example": "Atomic Habits"
-          },
-          "description": {
-            "type": "string",
-            "description": "Author of the Lab",
-            "example": "James Clear"
-          }
-        },
-        "required": ["title", "description"]
+        "required": ["success", "message", "timestamp"]
       },
       "AuthCredentials": {
         "type": "object",
@@ -729,103 +536,263 @@
           "email": {
             "type": "string",
             "format": "email",
-            "description": "User email address",
-            "example": "user@example.com"
+            "example": "standard_user@example.com"
           },
           "password": {
             "type": "string",
-            "description": "User password",
-            "example": "yourpassword"
+            "format": "password",
+            "example": "script_sauce"
           }
         },
         "required": ["email", "password"]
       },
-      "AuthResponse": {
+      "User": {
         "type": "object",
         "properties": {
-          "access_token": {
-            "type": "string",
-            "description": "JWT access token",
-            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-          },
-          "token_type": {
-            "type": "string",
-            "example": "bearer"
-          },
-          "expires_in": {
-            "type": "integer",
-            "description": "Token expiration time in seconds",
-            "example": 3600
-          },
-          "refresh_token": {
-            "type": "string",
-            "description": "Refresh token for obtaining new access tokens"
-          },
-          "user": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "example": "user" },
+          "status": { "type": "string", "example": "active" }
+        },
+        "required": ["id", "email"]
+      },
+      "AuthSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "message": { "type": "string" },
+          "data": {
             "type": "object",
             "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "example": "cd004999d-7d4b-4167-a9af-0f15783caee5"
+              "token": { "type": "string" },
+              "user": { "$ref": "#/components/schemas/User" },
+              "requiresConfirmation": { "type": "boolean", "example": false }
+            }
+          },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CurrentUserResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": { "$ref": "#/components/schemas/User" }
+            }
+          },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "VerifyTokenResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": {
+              "valid": { "type": "boolean", "example": true },
+              "user_id": { "type": "string", "format": "uuid" },
+              "email": { "type": "string", "format": "email" },
+              "expires_at": { "type": "string", "example": "N/A" }
+            }
+          },
+          "message": { "type": "string", "example": "Token is valid" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Lab": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 14 },
+          "title": { "type": "string", "example": "Cypress Checkout Test" },
+          "description": { "type": "string", "example": "Automation script for add-to-cart and checkout flow" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "title", "description", "user_id"]
+      },
+      "LabInput": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "maxLength": 255 },
+          "description": { "type": "string" }
+        },
+        "required": ["title", "description"]
+      },
+      "LabUpdateInput": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "maxLength": 255 },
+          "description": { "type": "string" }
+        },
+        "minProperties": 1
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 50 },
+          "total": { "type": "integer", "example": 1 },
+          "totalPages": { "type": "integer", "example": 1 }
+        }
+      },
+      "LabListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Lab" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LabSearchResponse": {
+        "allOf": [
+          { "$ref": "#/components/schemas/LabListResponse" },
+          {
+            "type": "object",
+            "properties": {
+              "search_query": { "type": "string", "example": "checkout" }
+            }
+          }
+        ]
+      },
+      "SingleLabResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": { "$ref": "#/components/schemas/Lab" },
+          "message": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DeleteLabResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "data": {
+            "type": "object",
+            "properties": { "id": { "oneOf": [{ "type": "integer" }, { "type": "string" }] } }
+          },
+          "message": { "type": "string", "example": "lab deleted successfully" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiMessageResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" },
+          "data": { "type": "object" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": { "type": "string", "example": "An error occurred" },
+              "code": { "type": "string", "example": "AUTH_FAILED" }
+            }
+          },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "responses": {
+      "LabReturned": {
+        "description": "Lab returned successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/SingleLabResponse" }
+          }
+        }
+      },
+      "LabCreated": {
+        "description": "Lab created successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/SingleLabResponse" },
+            "example": {
+              "success": true,
+              "data": {
+                "id": 14,
+                "title": "Cypress Checkout Test",
+                "description": "Automation script for add-to-cart and checkout flow",
+                "user_id": "4c3d8f6a-1f87-4c41-a3d7-fdb8f92c4021"
               },
-              "email": {
-                "type": "string",
-                "format": "email",
-                "example": "user@example.com"
+              "message": "Lab added successfully",
+              "timestamp": "2026-05-16T07:23:29.336Z"
+            }
+          }
+        }
+      },
+      "LabUpdated": {
+        "description": "Lab updated successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/SingleLabResponse" }
+          }
+        }
+      },
+      "UnauthorizedError": {
+        "description": "Authentication information is missing or invalid",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "no_token": {
+                "summary": "No token provided",
+                "value": { "success": false, "error": { "message": "No token provided" }, "timestamp": "2026-05-16T07:23:29.336Z" }
+              },
+              "invalid_token": {
+                "summary": "Invalid token",
+                "value": { "success": false, "error": { "message": "Invalid token" }, "timestamp": "2026-05-16T07:23:29.336Z" }
               }
             }
           }
         }
       },
-      "Error": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Error message",
-            "example": "An error occurred"
-          },
-          "error": {
-            "type": "string",
-            "description": "Detailed error information"
-          }
-        },
-        "required": ["message"]
-      },
-      "SuccessMessage": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Success message",
-            "example": "Operation completed successfully"
-          }
-        },
-        "required": ["message"]
-      }
-    },
-    "responses": {
-      "UnauthorizedError": {
-        "description": "Authentication information is missing or invalid",
+      "ValidationError": {
+        "description": "Request validation failed",
         "content": {
           "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
-            "examples": {
-              "no_token": {
-                "summary": "No token provided",
-                "value": {
-                  "message": "No token provided"
-                }
-              },
-              "invalid_token": {
-                "summary": "Invalid token",
-                "value": {
-                  "message": "Invalid token"
-                }
-              }
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "success": false,
+              "error": { "message": "Validation Error: Email is required" },
+              "timestamp": "2026-05-16T07:23:29.336Z"
+            }
+          }
+        }
+      },
+      "RateLimitError": {
+        "description": "Too many requests",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "success": false,
+              "error": { "message": "Too many authentication attempts. Please try again later", "code": "RATE_LIMIT_EXCEEDED" },
+              "timestamp": "2026-05-16T07:23:29.336Z"
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Resource not found or unauthorized",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "success": false,
+              "error": { "message": "lab not found or unauthorized" },
+              "timestamp": "2026-05-16T07:23:29.336Z"
             }
           }
         }
@@ -834,30 +801,15 @@
         "description": "Internal server error",
         "content": {
           "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            },
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
             "example": {
-              "message": "Server error saat menambah buku",
-              "error": "Database connection failed"
+              "success": false,
+              "error": { "message": "Internal server error" },
+              "timestamp": "2026-05-16T07:23:29.336Z"
             }
           }
         }
       }
     }
-  },
-  "tags": [
-    {
-      "name": "System",
-      "description": "System health and monitoring endpoints"
-    },
-    {
-      "name": "Authentication",
-      "description": "Authentication endpoints using backend API with Supabase"
-    },
-    {
-      "name": "Labs",
-      "description": "Lab management endpoints (CRUD operations)"
-    }
-  ]
+  }
 }
