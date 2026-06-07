@@ -1,5 +1,20 @@
 require("dotenv").config();
 
+const isJest = Boolean(process.env.JEST_WORKER_ID);
+const isTest = process.env.NODE_ENV === "test" || isJest;
+
+// Jest imports config.js from many isolated test files. Tests should not exit the
+// worker process just because production-only environment variables are absent.
+// Production and normal development still validate required env values strictly.
+if (isTest) {
+  process.env.NODE_ENV = "test";
+  process.env.DATABASE_URL =
+    process.env.DATABASE_URL ||
+    "postgresql://test_user:test_password@localhost:5432/scriptlabs_test_db";
+  process.env.JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret";
+  process.env.FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+}
+
 const config = {
   // Server Configuration
   port: parseInt(process.env.PORT) || 3000,
@@ -55,7 +70,6 @@ const config = {
 
 // Validate required environment variables
 const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET"];
-
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 
 if (missingVars.length > 0) {
