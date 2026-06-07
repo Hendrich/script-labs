@@ -54,7 +54,7 @@ try {
 } catch (error) {
   console.warn(
     "Warning: Could not load OpenAPI spec, using fallback:",
-    error.message
+    error.message,
   );
   // Minimal fallback spec
   openApiSpec = {
@@ -115,7 +115,7 @@ app.use((req, res, next) => {
     console.log(
       `[API REQUEST] ${req.method} ${req.path} - IP: ${
         req.headers["x-forwarded-for"] || req.ip
-      } - ${new Date().toISOString()}`
+      } - ${new Date().toISOString()}`,
     );
   }
   next();
@@ -136,7 +136,7 @@ app.use(sanitize);
 app.use(
   cors({
     ...config.cors,
-  })
+  }),
 );
 
 // Strict Origin/Referer enforcement for state-changing requests (extra CSRF hardening)
@@ -154,6 +154,9 @@ app.use((req, res, next) => {
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     process.env.FRONTEND_URL,
+    "https://labs.hendri.me",
+    "https://api.hendri.me",
+    "https://api-script-labs.hendri.me",
   ].filter(Boolean);
   customAllowed.forEach((o) => allowed.add(o));
 
@@ -193,7 +196,7 @@ const swaggerOptions = {
 app.use(
   "/api-docs",
   swaggerUi.serve,
-  swaggerUi.setup(openApiSpec, swaggerOptions)
+  swaggerUi.setup(openApiSpec, swaggerOptions),
 );
 
 // Health check endpoint
@@ -246,7 +249,7 @@ app.use((req, res, next) => {
       .status(404)
       .type("text")
       .send(
-        "The page cannot be found on backend. Frontend is served from Vercel."
+        "The page cannot be found on backend. Frontend is served from Vercel.",
       );
   }
 });
