@@ -1,0 +1,28 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+ignore:
+  SNYK-JS-FORMDATA-17337015:
+    - '*':
+        reason: >
+          Only reachable through node-telegram-bot-api's deprecated internal
+          "request" HTTP client (used solely by the optional Telegram test
+          notifier in telegram-bot/). TELEGRAM_BOT_TOKEN is not configured in
+          CI secrets, so this code path is currently inactive. A real fix
+          requires upgrading to node-telegram-bot-api@2.0.0, which is a
+          breaking API rewrite (TelegramBot -> Bot/Api) and needs a separate
+          rewrite of telegram-bot/diagnose.js and TelegramTestNotifier.js.
+        expires: 2027-02-01T00:00:00.000Z
+  SNYK-JS-QS-16721866:
+    - '*':
+        reason: >
+          Same root cause as SNYK-JS-FORMDATA-17337015 -- transitive qs
+          version pinned inside node-telegram-bot-api's deprecated "request"
+          dependency, only used by the inactive Telegram test notifier.
+        expires: 2027-02-01T00:00:00.000Z
+  SNYK-JS-UUID-16133035:
+    - '*':
+        reason: >
+          Same root cause as SNYK-JS-FORMDATA-17337015 -- transitive uuid
+          version pinned inside node-telegram-bot-api's deprecated "request"
+          dependency, only used by the inactive Telegram test notifier.
+        expires: 2027-02-01T00:00:00.000Z
