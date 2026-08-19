@@ -42,9 +42,9 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run test:coverage:ci
 
-      - name: SonarCloud Scan
+      - name: SonarQube Cloud Scan
         if: github.ref == 'refs/heads/main'
-        uses: SonarSource/sonarcloud-github-action@v2
+        uses: SonarSource/sonarqube-scan-action@v8
         with:
           projectBaseDir: .
         env:
