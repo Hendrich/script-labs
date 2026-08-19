@@ -42,14 +42,6 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: npm run test:coverage:ci
 
-      - name: SonarQube Cloud Scan
-        if: github.ref == 'refs/heads/main'
-        uses: SonarSource/sonarqube-scan-action@v8
-        with:
-          projectBaseDir: .
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
       - name: Snyk Security Scan
         if: github.ref == 'refs/heads/main'
         uses: snyk/actions/node@master
