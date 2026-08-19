@@ -1,0 +1,57 @@
+owner: "9541602"
+team: "7661351"
+lastUpdatedBy: "9541602"
+lastRevision: 1757229452000
+name: Script Labs Environment
+color: null
+values:
+  - key: BASE_URL
+    value: http://localhost:3000
+    enabled: true
+    description: Base URL for the Book Catalog API
+  - key: BASE_URL_PRODUCTION
+    value: https://script-labs.onrender.com
+    enabled: true
+    description: Production URL on Render
+  - key: BASE_URL_LOCAL
+    value: http://localhost:3000
+    enabled: true
+    description: Local development URL
+  - key: SUPABASE_URL
+    value: https://uoumouxnuzwioaolnfmw.supabase.co
+    enabled: true
+    description: Supabase project URL
+  - key: SUPABASE_ANON_KEY
+    enabled: true
+    description: Supabase anonymous key for authentication
+    secret: true
+  - key: access_token
+    value: ""
+    enabled: true
+    description: JWT access token (auto-populated after login)
+  - key: refresh_token
+    value: ""
+    enabled: true
+    description: Refresh token for token renewal
+  - key: book_id
+    value: ""
+    enabled: true
+    description: Sample book ID for testing (auto-populated)
+  - key: new_book_id
+    value: ""
+    enabled: true
+    description: ID of newly created book (auto-populated)
+  - key: workflow_book_id
+    value: ""
+    enabled: true
+    description: Book ID for complete workflow testing (auto-populated)
+  - key: test_email
+    value: test@example.com
+    enabled: true
+    description: Test email for registration
+  - key: test_password
+    enabled: true
+    description: Test password for registration
+    secret: true
+createdAt: 2025-07-12T12:37:58.000Z
+updatedAt: 2025-09-07T07:17:32.000Z

@@ -1,0 +1,29 @@
+$kind: http-request
+description: Register a new user account
+url: "{{BASE_URL_PRODUCTION}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "hendri.finansia@gmail.com",
+      "password": "123456"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 201) {
+          pm.test('Registration successful', function () {
+              pm.response.to.have.status(201);
+          });
+          
+          const responseJson = pm.response.json();
+          pm.test('Response has user data', function () {
+              pm.expect(responseJson.data.user).to.have.property('email');
+          });
+      }
+    language: text/javascript
+settings: {}
+order: 1000

@@ -1,0 +1,36 @@
+name: Deploy to Vultr
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm ci
+      - name: Run tests
+        env:
+          NODE_ENV: test
+        run: npx jest
+
+  deploy:
+    needs: test          # ← kunci: deploy HANYA jalan kalau test di atas lolos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VULTR_HOST }}
+          username: ${{ secrets.VULTR_USER }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          port: ${{ secrets.VULTR_SSH_PORT }}
+          script: |
+            cd ~/apps/script-labs
+            git pull origin main
+            npm ci
+            pm2 restart script-labs-api --update-env

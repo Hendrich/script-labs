@@ -1,0 +1,14 @@
+workspace:
+  id: aa2a4179-760e-4941-acc9-6a1a60db5d97
+
+localResources:
+  specs:
+    - ../openapi-spec.json
+
+# Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
+cloudResources:
+  collections:
+    ../postman/collections/Script Labs App API: 9541602-0c59ba9b-f3ad-44d9-980f-d8ca15b2f4a6
+  environments:
+    ../postman/environments/Script Labs Environment.environment.yaml: 9541602-31d88ed6-52cd-439b-bf7f-261d7d554a13

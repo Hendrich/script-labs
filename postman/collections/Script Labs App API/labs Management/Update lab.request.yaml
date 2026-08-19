@@ -1,0 +1,19 @@
+$kind: http-request
+description: Update an existing lab (replace {{labId}} with actual lab ID)
+url: "{{BASE_URL_PRODUCTION}}/api/labs/{{labId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "title": "Atomic Habits - Updated Edition",
+      "description": "James Clear"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 4000

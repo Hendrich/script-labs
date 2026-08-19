@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/labs"
+method: GET
+settings: {}
+order: 2000

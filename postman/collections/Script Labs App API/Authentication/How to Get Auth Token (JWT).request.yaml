@@ -1,0 +1,15 @@
+$kind: http-request
+description: Use this endpoint to login and get JWT token from backend. Do NOT use Supabase Auth API directly for this app.
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "email_yang_terdaftar@domain.com",
+      "password": "password_yang_benar"
+    }
+settings: {}
+order: 6000

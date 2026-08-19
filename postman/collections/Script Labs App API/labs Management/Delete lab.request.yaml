@@ -1,0 +1,10 @@
+$kind: http-request
+description: Delete a lab (replace {{labId}} with actual lab ID)
+url: "{{BASE_URL_PRODUCTION}}/api/labs/{{labId}}"
+method: DELETE
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 5000

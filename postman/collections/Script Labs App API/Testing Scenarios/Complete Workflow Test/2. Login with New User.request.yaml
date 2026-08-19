@@ -1,0 +1,24 @@
+$kind: http-request
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "hendri.christianto24@gmail.com",
+      "password": "OQS4iqyWkAdBXgsS"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 200) {
+          const responseJson = pm.response.json();
+          if (responseJson.data && responseJson.data.token) {
+              pm.collectionVariables.set('authToken', responseJson.data.token);
+          }
+      }
+    language: text/javascript
+settings: {}
+order: 2000

@@ -1,0 +1,12 @@
+$kind: http-request
+description: Search labs by title or author for the authenticated user
+url: "{{BASE_URL_PRODUCTION}}/api/labs/search?q=hendri"
+method: GET
+queryParams:
+  q: hendri
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 2000

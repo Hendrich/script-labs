@@ -1,0 +1,10 @@
+$kind: http-request
+description: Get current authenticated user information
+url: "{{BASE_URL_PRODUCTION}}/api/auth/me"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 3000

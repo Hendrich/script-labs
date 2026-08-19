@@ -2,18 +2,11 @@ name: CI-CD Pipeline
 
 on:
   push:
-    branches:
-      # - main
-      - Hendri/CI-CD
-      - dini
-      - feat-unit-test
-  pull_request:
-    branches:
-      - main
+    branches: [main]
+
 
 jobs:
   build:
-    if: github.actor != 'Hendrich' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read

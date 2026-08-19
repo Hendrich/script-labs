@@ -1,0 +1,6 @@
+$kind: http-request
+description: Logout user (documentation endpoint)
+url: "{{baseUrl}}/api/auth/logout"
+method: POST
+settings: {}
+order: 5000

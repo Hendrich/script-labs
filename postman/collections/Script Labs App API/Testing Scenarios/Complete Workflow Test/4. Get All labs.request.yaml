@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{baseUrl}}/api/labs"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 4000

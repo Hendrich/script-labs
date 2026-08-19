@@ -1,0 +1,8 @@
+$kind: http-request
+name: New Request
+url: https://api.coingecko.com/api/v3/simple/price?ids=polygon-ecosystem-token&vs_currencies=usd,idr
+method: GET
+queryParams:
+  ids: polygon-ecosystem-token
+  vs_currencies: usd,idr
+order: 1749

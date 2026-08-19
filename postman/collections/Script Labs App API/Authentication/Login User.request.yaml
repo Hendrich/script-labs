@@ -1,0 +1,36 @@
+$kind: http-request
+name: Login User
+description: Login with existing user credentials and get JWT token
+url: "{{BASE_URL_PRODUCTION}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "standard_user@example.com",
+      "password": "script_sauce"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 200) {
+          pm.test('Login successful', function () {
+              pm.response.to.have.status(200);
+          });
+          
+          const responseJson = pm.response.json();
+          pm.test('Response has token', function () {
+              pm.expect(responseJson.data).to.have.property('token');
+          });
+          
+          // Automatically set the auth token for subsequent requests
+          if (responseJson.data && responseJson.data.token) {
+              pm.collectionVariables.set('authToken', responseJson.data.token);
+              console.log('Auth token set: ' + responseJson.data.token.substring(0, 20) + '...');
+          }
+      }
+    language: text/javascript
+settings: {}
+order: 2000

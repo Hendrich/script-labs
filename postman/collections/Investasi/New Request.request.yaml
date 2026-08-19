@@ -1,0 +1,14 @@
+$kind: http-request
+name: New Request
+url: https://api.coingecko.com/api/v3/simple/price?ids=litecoin&vs_currencies=usd,idr
+method: GET
+queryParams:
+  - key: ids
+    value: litecoin
+    disabled: false
+    description: ""
+  - key: vs_currencies
+    value: usd,idr
+    disabled: false
+    description: ""
+order: 2000

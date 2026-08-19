@@ -1,0 +1,19 @@
+$kind: collection
+name: Script Labs App API
+description: Complete API collection for Script Labs App with authentication and CRUD operations
+variables:
+  - key: baseUrl
+    value: http://localhost:3000
+    disabled: false
+  - key: authToken
+    value: ""
+    disabled: false
+  - key: labId
+    value: ""
+    disabled: false
+  - key: bearer_token_04h7
+    secret: true
+    disabled: false
+  - key: bearer_token_02xt
+    secret: true
+    disabled: false

@@ -1,0 +1,8 @@
+$kind: http-request
+name: https://ai.automation-hairul.web.id/v1/models
+description: "Generated from cURL: curl -X GET 'https://ai.automation-hairul.web.id/v1/models' -H 'Authorization: {{bearer_token_04h7}}-bcbe6703e0b6c6767a867ee2fa467a8d’"
+url: https://ai.automation-hairul.web.id/v1/models
+method: GET
+headers:
+  Authorization: "{{bearer_token_04h7}}"
+order: 975734671674429

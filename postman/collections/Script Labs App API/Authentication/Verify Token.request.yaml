@@ -1,0 +1,10 @@
+$kind: http-request
+description: Verify if the current JWT token is valid
+url: "{{baseUrl}}/api/auth/verify-token"
+method: POST
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 4000

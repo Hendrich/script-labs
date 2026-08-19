@@ -1,0 +1,30 @@
+$kind: http-request
+description: Add a new lab to the catalog
+url: "{{BASE_URL_PRODUCTION}}/api/labs"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "title": "testing title",
+      "description": "test menguji di postman untuk fitur add"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 201) {
+          const responseJson = pm.response.json();
+          if (responseJson.data && responseJson.data.id) {
+              pm.collectionVariables.set('labId', responseJson.data.id);
+              console.log('lab ID set: ' + responseJson.data.id);
+          }
+      }
+    language: text/javascript
+settings: {}
+order: 3000

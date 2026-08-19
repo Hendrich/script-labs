@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/labs"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "title": "The 7 Habits of Highly Effective People",
+      "author": "Stephen R. Covey"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+settings: {}
+order: 3000

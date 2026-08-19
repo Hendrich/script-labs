@@ -1,0 +1,26 @@
+$kind: http-request
+description: Get all labs belonging to the authenticated user
+url: "{{BASE_URL_PRODUCTION}}/api/labs/"
+method: GET
+auth:
+  type: bearer
+  credentials:
+    token: "{{authToken}}"
+scripts:
+  - type: afterResponse
+    code: "const resposeBodyJSON = pm.response.json()\r
+
+      //console.log('response :', resposeBodyJSON.data[0].id)\r
+
+      pm.collectionVariables.set('labId', resposeBodyJSON.data[0].id)\r
+
+      \r
+
+      \r
+
+      \r
+
+      \r\n"
+    language: text/javascript
+settings: {}
+order: 1000
