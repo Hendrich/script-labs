@@ -7,7 +7,10 @@ const isTest = process.env.NODE_ENV === "test" || isJest;
 // worker process just because production-only environment variables are absent.
 // Production and normal development still validate required env values strictly.
 if (isTest) {
-  process.env.NODE_ENV = "test";
+  // Hanya isi default kalau belum di-set -- jangan timpa NODE_ENV yang
+  // SENGAJA di-set test (mis. "production"/"development") untuk menguji
+  // logika kondisional seperti config.database.ssl.
+  process.env.NODE_ENV = process.env.NODE_ENV || "test";
   process.env.DATABASE_URL =
     process.env.DATABASE_URL ||
     "postgresql://test_user:test_password@localhost:5432/scriptlabs_test_db";
@@ -31,6 +34,12 @@ const config = {
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresIn: process.env.JWT_EXPIRES_IN || "24h",
+  },
+
+  // Supabase Configuration
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    anonKey: process.env.SUPABASE_ANON_KEY,
   },
 
   // CORS Configuration

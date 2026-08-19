@@ -301,7 +301,9 @@ describe("Integration Tests - Local Auth and Labs Workflow", () => {
         .expect(200);
 
       expect(deleteLabResponse.body.success).toBe(true);
-      expect(deleteLabResponse.body.data.id).toBe(String(labId));
+      // validateId (Joi schemas.id) coerces the :id param to a number before
+      // the route handler builds the response, so data.id is 1, not "1".
+      expect(deleteLabResponse.body.data.id).toBe(labId);
       expect(deleteLabResponse.body.message).toBe("lab deleted successfully");
     });
   });
@@ -435,7 +437,9 @@ describe("Integration Tests - Local Auth and Labs Workflow", () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error.message).toBe("lab not found");
       expect(mockDb.query.mock.calls[0][0]).toContain("user_id = $2");
-      expect(mockDb.query.mock.calls[0][1]).toEqual(["1", "user-a"]);
+      // validateId (Joi schemas.id) coerces the :id param to a number before
+      // it reaches the route handler, so the bound query param is 1, not "1".
+      expect(mockDb.query.mock.calls[0][1]).toEqual([1, "user-a"]);
     });
   });
 

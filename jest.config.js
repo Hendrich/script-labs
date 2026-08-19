@@ -38,8 +38,9 @@
 		'!backend/**/*.spec.js'
 	],
 
-	// Setup files - commented out for now
-	// setupFilesAfterEnv: ['./tests/setup/testSetup.js'],
+	// Global test setup: seeds required env vars (DATABASE_URL, JWT_SECRET, etc.)
+	// and mocks backend/db.js + @supabase/supabase-js for every test file.
+	setupFilesAfterEnv: ['./tests/setup/testSetup.js'],
 
 	// Module paths
 	moduleDirectories: ['node_modules', 'backend'],

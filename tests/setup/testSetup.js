@@ -29,6 +29,11 @@ afterEach(() => {
 jest.setTimeout(30000); // Increased from 10000 to 30000
 
 // Mock external dependencies that we don't want to test
+// virtual: true -- @supabase/supabase-js isn't an installed dependency of this
+// backend (config.supabase only exposes the URL/anon key as plain strings),
+// so Jest can't resolve the real module to attach the mock to. Without
+// `virtual: true` this jest.mock() call throws "Cannot find module" and
+// crashes every test suite that loads this setup file.
 jest.mock('@supabase/supabase-js', () => ({
 	createClient: jest.fn(() => ({
 		auth: {
@@ -38,7 +43,7 @@ jest.mock('@supabase/supabase-js', () => ({
 			getUser: jest.fn()
 		}
 	}))
-}));
+}), { virtual: true });
 
 // Mock pg database connection
 jest.mock('../../backend/db.js', () => ({
