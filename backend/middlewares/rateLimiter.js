@@ -5,6 +5,22 @@ const config = require("../config/config");
  * Rate limiting middleware to prevent abuse
  */
 
+// CF-Connecting-IP diset oleh Cloudflare berdasarkan koneksi TCP asli ke edge
+// mereka -- TIDAK BISA dipalsukan oleh client (beda dengan X-Forwarded-For yang
+// bisa disisipi entri palsu oleh client sebelum sampai ke Cloudflare). Selalu
+// prioritaskan header ini kalau ada; fallback ke X-Forwarded-For/req.ip untuk
+// traffic yang tidak lewat Cloudflare (mis. akses langsung/lokal).
+const resolveClientIp = (req) => {
+	const cfIp = req.headers["cf-connecting-ip"];
+	if (cfIp) return cfIp;
+
+	const forwarded = req.headers["x-forwarded-for"];
+	if (forwarded) {
+		return forwarded.split(",")[0].trim();
+	}
+	return req.ip;
+};
+
 // Create rate limiter with custom configuration
 const createRateLimiter = (
 	windowMs,
@@ -26,19 +42,10 @@ const createRateLimiter = (
 		standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
 		legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 		skipSuccessfulRequests, // Don't count successful requests
-		keyGenerator: (req) => {
-			// Gunakan IP asli dari header x-forwarded-for jika ada, fallback ke req.ip
-			const forwarded = req.headers["x-forwarded-for"];
-			if (forwarded) {
-				// Ambil IP pertama dari daftar (jika ada beberapa IP)
-				return forwarded.split(",")[0].trim();
-			}
-			return req.ip;
-		},
+		keyGenerator: resolveClientIp,
 		handler: (req, res) => {
 			// Logging setiap kali rate limit tercapai
-			const forwarded = req.headers["x-forwarded-for"];
-			const ip = forwarded ? forwarded.split(",")[0].trim() : req.ip;
+			const ip = resolveClientIp(req);
 			if (ip === "::1") {
 				// Bypass rate limit untuk localhost
 				if (process.env.NODE_ENV !== "test") {

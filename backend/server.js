@@ -65,8 +65,11 @@ try {
 }
 
 const app = express();
-// Trust first proxy (Render / reverse proxy) so secure cookies & protocol detection work
-app.set("trust proxy", 1);
+// Rantai proxy sekarang: Cloudflare (edge) -> Nginx (Vultr) -> app = 2 hop.
+// Trust proxy 1 (lama, era Render dengan 1 hop) membuat req.ip terbaca sebagai
+// IP edge Cloudflare, bukan IP client asli. Set ke 2 agar req.ip, secure cookies,
+// & protocol detection resolve ke IP/skema yang benar.
+app.set("trust proxy", 2);
 const PORT = config.port;
 
 // Session middleware removed: application is fully stateless (JWT in Authorization header).
@@ -114,7 +117,7 @@ app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     console.log(
       `[API REQUEST] ${req.method} ${req.path} - IP: ${
-        req.headers["x-forwarded-for"] || req.ip
+        req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.ip
       } - ${new Date().toISOString()}`,
     );
   }
