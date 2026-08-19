@@ -25,7 +25,7 @@ describe("Configuration Module", () => {
       const config = require("../../backend/config/config");
 
       // Assert
-      expect(config.port).toBe(3000); // From test setup, not default 3000
+      expect(config.port).toBe(3001); // tests/setup/testSetup.js sets PORT=3001
       expect(config.nodeEnv).toBe("test"); // From test setup
       expect(config.database.url).toBe(
         "postgresql://test:test@localhost:5432/test"
