@@ -1,32 +1,32 @@
-# 🏗️ Script Labs App - System Architecture V2.0
+# 🏗️ Script Labs App - Arsitektur Sistem V2.0
 
-## 📋 Document Information
+## 📋 Informasi Dokumen
 
-- **Version**: 2.0 (rewritten to match `backend/server.js` and actual deployment)
-- **Date**: 13 September 2026
-- **Status**: Current / Authoritative
-- **Related**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Database Architecture](./DATABASE_ARCHITECTURE_V2.md), [Deployment Guide](./DEPLOYMENT_GUIDE.md)
+- **Versi**: 2.0 (ditulis ulang agar sesuai dengan `backend/server.js` dan deployment aktual)
+- **Tanggal**: 13 September 2026
+- **Status**: Aktif / Acuan Utama
+- **Terkait**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Arsitektur Database](./DATABASE_ARCHITECTURE_V2.md), [Panduan Deployment](./DEPLOYMENT_GUIDE.md)
 
 ---
 
-## 🎯 Architecture Overview
+## 🎯 Gambaran Arsitektur
 
-Script Labs is a deliberately simple, **monolithic** Node.js/Express API deployed on a single VPS. There is no microservices split, no managed cloud database, no cache layer, and no frontend served by this repository — the goal is a realistic-but-small target for QA practice, not a scalable production system.
+Script Labs sengaja dibuat sebagai API Node.js/Express **monolitik** yang sederhana, di-deploy di satu VPS. Tidak ada pemisahan microservices, tidak ada database cloud terkelola, tidak ada layer cache, dan tidak ada frontend yang disajikan oleh repository ini — tujuannya adalah target latihan QA yang realistis-tapi-kecil, bukan sistem produksi yang scalable.
 
-### High-Level Architecture
+### Arsitektur Tingkat Tinggi
 
 ```mermaid
 graph TB
     subgraph "Client"
-        POSTMAN[Postman / Automation Scripts]
-        LOADTEST[Load Test Tools - k6/JMeter/Artillery]
+        POSTMAN[Postman / Script Automation]
+        LOADTEST[Tool Load Test - k6/JMeter/Artillery]
     end
 
     subgraph "Vultr VPS"
         NGINX[Nginx - reverse proxy + SSL]
         PM2[PM2 process manager]
         API[Express.js API]
-        PG[(Self-hosted PostgreSQL)]
+        PG[(PostgreSQL self-hosted)]
     end
 
     POSTMAN --> NGINX
@@ -38,57 +38,58 @@ graph TB
 
 ---
 
-## 🏛️ Layered View
+## 🏛️ Tampilan Berlapis
 
 ### 1. Reverse Proxy / Edge
 
 ```
-🚪 Nginx
-├── TLS termination (Let's Encrypt via certbot)
-├── Forwards X-Forwarded-For / X-Real-IP (used by the rate limiter's key generator)
-└── Proxies to the Node.js process on localhost
+🚪 Nginx (opsional di belakang Cloudflare)
+├── Terminasi TLS (Let's Encrypt via certbot)
+├── Meneruskan header CF-Connecting-IP (jika lewat Cloudflare) / X-Forwarded-For / X-Real-IP
+│   (dipakai oleh key generator rate limiter untuk resolusi IP client yang akurat)
+└── Proxy ke proses Node.js di localhost
 ```
 
 ### 2. Application Layer (`backend/`)
 
 ```
 ⚙️ Express App (server.js)
-├── helmet (security headers, CSP)
-├── custom Origin/Referer check (CSRF hardening for state-changing requests)
-├── cors (allow-listed origins)
-├── body-parser (JSON, 10mb limit)
-├── sanitize (basic HTML-tag stripping middleware)
+├── helmet (security header, CSP)
+├── pengecekan Origin/Referer kustom (pengerasan CSRF untuk request yang mengubah state)
+├── cors (origin yang di-allow-list)
+├── body-parser (JSON, limit 10mb)
+├── sanitize (middleware penghapus tag HTML dasar)
 ├── /api/auth  → authRoutes.js  (register, login, logout, me, verify-token)
-├── /api/labs  → labRoutes.js   (CRUD + search, all behind authMiddleware)
-├── /api-docs  → Swagger UI (serves openapi-spec.json)
+├── /api/labs  → labRoutes.js   (CRUD + search, semua di belakang authMiddleware)
+├── /api-docs  → Swagger UI (menyajikan openapi-spec.json)
 ├── /health    → health check
-└── errorHandler (centralized, last middleware)
+└── errorHandler (terpusat, middleware terakhir)
 ```
 
 ### 3. Data Access Layer
 
 ```
 📊 backend/db.js
-└── single pg.Pool → self-hosted PostgreSQL (see DATABASE_ARCHITECTURE_V2.md)
+└── satu pg.Pool → PostgreSQL self-hosted (lihat DATABASE_ARCHITECTURE_V2.md)
 ```
 
-### 4. Cross-Cutting Middleware
+### 4. Middleware Lintas-Cutting
 
 ```
-🛡️ Security & Validation
-├── Joi-based validation (backend/middlewares/validation.js)
-├── express-rate-limit (backend/middlewares/rateLimiter.js) — auth endpoints only
-├── JWT verification (backend/middlewares/authMiddleware.js)
-└── centralized error handling (backend/middlewares/errorHandler.js)
+🛡️ Keamanan & Validasi
+├── Validasi berbasis Joi (backend/middlewares/validation.js)
+├── express-rate-limit (backend/middlewares/rateLimiter.js) — hanya endpoint auth
+├── Verifikasi JWT (backend/middlewares/authMiddleware.js)
+└── Error handling terpusat (backend/middlewares/errorHandler.js)
 ```
 
-There is **no** Supabase, Redis, email service, Telegram bot, or WebSocket layer inside the running application. (A Telegram bot script exists under `telegram-bot/` in this repository, but it is a CI/test-notification utility run separately — it is not part of the API's runtime architecture.)
+Tidak ada Supabase, Redis, email service, Telegram bot, atau layer WebSocket di dalam aplikasi yang berjalan. (Ada script bot Telegram di folder `telegram-bot/` dalam repository ini, tapi itu utilitas notifikasi CI/test yang dijalankan terpisah — bukan bagian dari arsitektur runtime API.)
 
 ---
 
-## 🔐 Security Architecture
+## 🔐 Arsitektur Keamanan
 
-### Request Flow for a Protected Endpoint
+### Alur Request untuk Endpoint Terproteksi
 
 ```mermaid
 sequenceDiagram
@@ -98,73 +99,73 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     C->>NGX: Request + Authorization: Bearer <JWT>
-    NGX->>API: Forwarded request
-    API->>API: helmet, CORS, Origin/Referer check
-    API->>API: authMiddleware verifies JWT signature & expiry
-    API->>DB: Query scoped to req.user_id
-    DB->>API: Rows
-    API->>C: JSON response
+    NGX->>API: Request diteruskan
+    API->>API: helmet, CORS, pengecekan Origin/Referer
+    API->>API: authMiddleware verifikasi signature & masa berlaku JWT
+    API->>DB: Query di-scope ke req.user_id
+    DB->>API: Baris data
+    API->>C: Response JSON
 ```
 
-### Security Layers (as actually implemented)
+### Lapisan Keamanan (sesuai implementasi nyata)
 
 ```
 🛡️ Security Stack
 ├── Transport: HTTPS via Nginx + Let's Encrypt
-├── Headers: Helmet (CSP restricted to self + Google Fonts, no unsafe-inline)
-├── CSRF hardening: custom Origin/Referer allow-list check on state-changing requests
-├── Auth: stateless JWT (HS256), 24h expiry, bcrypt-hashed passwords (cost 12)
-├── Rate limiting: 5 requests/15 min/IP on /api/auth/register and /api/auth/login only
-├── Input validation: Joi schemas for body/params
-├── SQL: 100% parameterized queries via pg
-└── Data isolation: every labs query is scoped by user_id from the JWT
+├── Header: Helmet (CSP dibatasi ke self + Google Fonts, tanpa unsafe-inline)
+├── Pengerasan CSRF: pengecekan allow-list Origin/Referer kustom pada request pengubah state
+├── Auth: JWT stateless (HS256), kedaluwarsa 24 jam, password di-hash bcrypt (cost 12)
+├── Rate limiting: 5 request/15 menit/IP hanya pada /api/auth/register dan /api/auth/login
+├── Validasi input: skema Joi untuk body/params
+├── SQL: 100% parameterized query via pg
+└── Isolasi data: setiap query labs di-scope oleh user_id dari JWT
 ```
 
 ---
 
-## 📈 Performance Characteristics (realistic, for test planning)
+## 📈 Karakteristik Performa (realistis, untuk perencanaan test)
 
-This app runs on a **single small VPS** with no caching and a default-sized (10-connection) database pool — these are the real constraints QA performance testing should target, not aspirational numbers:
+Aplikasi ini berjalan di **satu VPS kecil** tanpa caching dan dengan connection pool database berukuran default (10 koneksi) — inilah batasan nyata yang seharusnya menjadi target performance testing QA, bukan angka-angka aspirasional:
 
 ```
-🎯 Known Constraints
-├── bcrypt (cost 12) makes /login and /register CPU-bound and the slowest endpoints by design
-├── Default pg.Pool max = 10 connections — a realistic concurrency ceiling to probe
-├── Search uses ILIKE (no index) — latency should grow with row count
-├── /api/labs/* has no rate limit — a legitimate unlimited-traffic surface to load-test
-└── Single VPS runs the API, Nginx, and PostgreSQL together — CPU/RAM is shared across all three
+🎯 Batasan yang Diketahui
+├── bcrypt (cost 12) membuat /login dan /register CPU-bound dan menjadi endpoint paling lambat, memang disengaja
+├── Default pg.Pool max = 10 koneksi — batas konkurensi realistis untuk diuji
+├── Pencarian memakai ILIKE (tanpa index) — latensi seharusnya bertambah seiring jumlah baris
+├── /api/labs/* tidak punya rate limit — permukaan traffic tak terbatas yang sah untuk di-load-test
+└── Satu VPS menjalankan API, Nginx, dan PostgreSQL bersamaan — CPU/RAM dibagi di antara ketiganya
 ```
 
 ---
 
-## 🛠️ Technology Stack (actual)
+## 🛠️ Technology Stack (aktual)
 
 ```
 ⚙️ Backend
 ├── Node.js (>= 18) + Express.js
 ├── pg (node-postgres)
 ├── jsonwebtoken, bcrypt
-├── joi (validation)
+├── joi (validasi)
 ├── helmet, cors, express-rate-limit
-└── swagger-ui-express (serves openapi-spec.json)
+└── swagger-ui-express (menyajikan openapi-spec.json)
 
-🔧 Infra
+🔧 Infrastruktur
 ├── Vultr VPS
 ├── PM2 (process manager)
-├── Nginx (reverse proxy + TLS)
-└── PostgreSQL (self-hosted, same VPS)
+├── Nginx (reverse proxy + TLS), opsional di belakang Cloudflare
+└── PostgreSQL (self-hosted, VPS yang sama)
 
-🧪 Testing (existing in this repo)
+🧪 Testing (sudah ada di repository ini)
 └── Jest + Supertest (backend/tests via `npm test`)
 ```
 
 ---
 
-## 🎯 Conclusion
+## 🎯 Kesimpulan
 
-This architecture is intentionally minimal and monolithic: one API process, one database, one server. That's a feature for this project's purpose — it gives QA a small, fully-readable system where the effects of rate limits, connection pool limits, and CPU-bound password hashing are directly observable through black-box testing, without a complex distributed system obscuring the results.
+Arsitektur ini sengaja dibuat minimal dan monolitik: satu proses API, satu database, satu server. Ini justru fitur untuk tujuan proyek ini — memberi QA sistem kecil yang bisa dibaca sepenuhnya, di mana efek dari rate limit, batas connection pool, dan hashing password yang CPU-bound bisa langsung diamati lewat black-box testing, tanpa sistem terdistribusi yang kompleks mengaburkan hasilnya.
 
 ---
 
-**Document Status**: ✅ Complete
-**Last Updated**: 13 September 2026
+**Status Dokumen**: ✅ Lengkap
+**Terakhir Diperbarui**: 13 September 2026

@@ -1,41 +1,41 @@
 # Changelog Script Labs API
 
-## Version 2.1.0 - 2025-09-07
+## Versi 2.1.0 - 07-09-2025
 
-### Security Hardening
+### Pengerasan Keamanan (Security Hardening)
 
-- Removed broad global rate limiting; introduced scoped strict limiter (5 attempts / 15m) only on `/api/auth/register` and `/api/auth/login`.
-- Unified authentication error responses to a generic message (`Invalid email or password`) to mitigate user enumeration.
-- Strengthened Content Security Policy: removed `'unsafe-inline'` for scripts/styles; limited external sources to self + Google Fonts only (styles/fonts) and Supabase for connect.
-- Removed verbose request body debug logging that could leak sensitive data (passwords/tokens).
-- Validation order adjusted (validation runs before rate limiter) to avoid counting malformed requests against brute force threshold.
-- Rate limiter bypass in automated test environment (`NODE_ENV=test`) to prevent false negatives in CI.
+- Menghapus rate limiting global yang luas; mengganti dengan limiter ketat yang di-scope (5 percobaan / 15 menit) hanya pada `/api/auth/register` dan `/api/auth/login`.
+- Menyatukan response error autentikasi menjadi satu pesan generik (`Invalid email or password`) untuk mencegah user enumeration.
+- Memperketat Content Security Policy: menghapus `'unsafe-inline'` untuk script/style; membatasi sumber eksternal hanya ke self + Google Fonts (style/font) dan `*.supabase.co` untuk `connect-src` (izin ini tersisa dari draf lama dan tidak benar-benar dipakai aplikasi saat ini, tapi tidak berbahaya untuk dibiarkan).
+- Menghapus logging debug body request yang verbose, yang berpotensi membocorkan data sensitif (password/token).
+- Urutan validasi disesuaikan (validasi berjalan sebelum rate limiter) supaya request yang salah bentuk tidak ikut terhitung ke ambang batas brute force.
+- Rate limiter dilewati (bypass) di environment test otomatis (`NODE_ENV=test`) untuk mencegah false negative di CI.
 
-### Code / Middleware Changes
+### Perubahan Kode / Middleware
 
-- `backend/server.js`: replaced legacy Helmet CSP block with stricter configuration; removed global `/api/auth` & `/api/labs` rate limiters; deleted body debug logger.
-- `backend/routes/authRoutes.js`: added scoped rate limiter, reordered middleware, standardized error output, returned 400 for registration errors and 401 for login failures.
-- Updated tests to align with new auth error contract and limiter behavior.
-- Adjusted validation test to assert unknown fields are stripped correctly.
+- `backend/server.js`: mengganti blok CSP Helmet lama dengan konfigurasi yang lebih ketat; menghapus rate limiter global `/api/auth` & `/api/labs`; menghapus body debug logger.
+- `backend/routes/authRoutes.js`: menambahkan rate limiter yang di-scope, mengurutkan ulang middleware, menstandarkan output error, mengembalikan 400 untuk error registrasi dan 401 untuk kegagalan login.
+- Memperbarui test agar sesuai dengan kontrak error auth dan perilaku limiter yang baru.
+- Menyesuaikan test validasi untuk memverifikasi field yang tidak dikenal terhapus dengan benar.
 
 ### Test & Coverage
 
-- All 334 tests passing after changes.
-- Coverage (approx): Statements 79%, Branches 70%, Functions 79%, Lines 79%.
+- Seluruh 334 test lolos setelah perubahan ini.
+- Coverage (perkiraan): Statements 79%, Branches 70%, Functions 79%, Lines 79%.
 
-### Backward Compatibility Notes
+### Catatan Kompatibilitas Mundur
 
-- Error codes `REGISTRATION_FAILED` / `LOGIN_FAILED` are replaced by `AUTH_FAILED` for local-database credential failures.
-- Clients relying on specific error messages or codes must update parsing logic.
-- CSP tightening may require frontend to eliminate inline scripts/styles or adopt nonce/hash strategy if reintroduced.
+- Kode error `REGISTRATION_FAILED` / `LOGIN_FAILED` digantikan oleh `AUTH_FAILED` untuk kegagalan kredensial berbasis database lokal.
+- Client yang bergantung pada pesan atau kode error tertentu harus memperbarui logic parsing-nya.
+- Pengetatan CSP mungkin mengharuskan frontend menghilangkan inline script/style atau mengadopsi strategi nonce/hash jika dipakai kembali.
 
-### Recommended Follow-ups
+### Rekomendasi Tindak Lanjut
 
-- Add HSTS & Permissions-Policy headers.
-- Introduce refresh token & JWT revocation list.
-- Centralized structured security logging (e.g., Winston + daily rotate).
-- Replace simple sanitization with a vetted library if rich text support is needed.
+- Tambahkan header HSTS & Permissions-Policy.
+- Perkenalkan refresh token & daftar revoke JWT.
+- Logging keamanan terstruktur terpusat (mis. Winston + daily rotate).
+- Ganti sanitasi sederhana dengan library yang teruji kalau dukungan rich text dibutuhkan.
 
 ---
 
-Generated automatically on 2025-09-07.
+Dibuat otomatis pada 07-09-2025. Dialihbahasakan ke Indonesia pada 13 September 2026.

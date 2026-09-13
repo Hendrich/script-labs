@@ -1,98 +1,98 @@
-# Script Labs App - QA Testing Checklist
+# Script Labs App - Checklist Testing QA
 
-## A Practical Checklist for QA Practice on This API
+## Checklist Praktis untuk Latihan QA di API Ini
 
-### 📋 Overview
+### 📋 Gambaran Umum
 
-This checklist replaces an earlier generic "development checklist" (which referenced a frontend, Supabase, and other things that don't exist in this repository). It's now scoped to what QA can actually exercise: the real API described in [PRD_Script_Labs_V2.md](./PRD_Script_Labs_V2.md) and [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md).
-
----
-
-## ✅ What's Actually Built (ground truth)
-
-- [x] Express.js API (`backend/server.js`), no frontend served by this repo
-- [x] PostgreSQL, self-hosted, single `pool` connection (`backend/db.js`)
-- [x] JWT auth (register/login/logout/me/verify-token)
-- [x] Password hashing with bcrypt
-- [x] Labs CRUD + search, all scoped to the authenticated user
-- [x] Joi-based input validation
-- [x] Rate limiting on `/api/auth/register` and `/api/auth/login`
-- [x] Helmet security headers + custom Origin/Referer check
-- [x] Swagger UI at `/api-docs`
-- [x] Existing Jest/Supertest test suite (`npm test`)
+Checklist ini menggantikan "development checklist" generik sebelumnya (yang menyebut frontend, Supabase, dan hal lain yang tidak ada di repository ini). Sekarang ruang lingkupnya adalah apa yang benar-benar bisa diuji QA: API sesungguhnya yang dijelaskan di [PRD_Script_Labs_V2.md](./PRD_Script_Labs_V2.md) dan [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md).
 
 ---
 
-## 🧪 Functional Test Coverage Checklist
+## ✅ Yang Benar-Benar Sudah Dibangun (fakta di lapangan)
 
-### Authentication
+- [x] API Express.js (`backend/server.js`), tanpa frontend yang disajikan repo ini
+- [x] PostgreSQL, self-hosted, satu koneksi `pool` (`backend/db.js`)
+- [x] Auth JWT (register/login/logout/me/verify-token)
+- [x] Hashing password dengan bcrypt
+- [x] CRUD + pencarian lab, semua di-scope ke user yang login
+- [x] Validasi input berbasis Joi
+- [x] Rate limiting pada `/api/auth/register` dan `/api/auth/login`
+- [x] Header keamanan Helmet + pengecekan Origin/Referer kustom
+- [x] Swagger UI di `/api-docs`
+- [x] Test suite Jest/Supertest yang sudah ada (`npm test`)
+
+---
+
+## 🧪 Checklist Cakupan Test Fungsional
+
+### Autentikasi
 
 - [ ] Register — happy path
-- [ ] Register — duplicate email (case-insensitive: `A@b.com` vs `a@b.com`)
-- [ ] Register — password boundary (5 / 6 / 128 / 129 characters)
-- [ ] Register — invalid email formats
-- [ ] Register — rate limit (6th attempt in 15 min from same IP)
+- [ ] Register — email duplikat (tidak case-sensitive: `A@b.com` vs `a@b.com`)
+- [ ] Register — boundary password (5 / 6 / 128 / 129 karakter)
+- [ ] Register — format email tidak valid
+- [ ] Register — rate limit (percobaan ke-6 dalam 15 menit dari IP yang sama)
 - [ ] Login — happy path
-- [ ] Login — wrong password / non-existent email (assert identical response)
-- [ ] Login — locked account (403, not 401)
+- [ ] Login — password salah / email tidak ada (verifikasi response identik)
+- [ ] Login — akun terkunci (403, bukan 401)
 - [ ] Login — rate limit
-- [ ] Logout — with and without a token
-- [ ] `/me` — valid token, missing token, expired token, malformed token
-- [ ] `/verify-token` — same variations as `/me`
+- [ ] Logout — dengan dan tanpa token
+- [ ] `/me` — token valid, token kosong, token kedaluwarsa, token salah bentuk
+- [ ] `/verify-token` — variasi sama seperti `/me`
 
-### Labs CRUD
+### CRUD Lab
 
-- [ ] List labs — pagination defaults and explicit `page`/`limit`
-- [ ] List labs — invalid `page`/`limit` (non-numeric, negative, zero, decimal) → should be 400
-- [ ] Search labs — matches on `title`, matches on `description`, no matches, empty query
-- [ ] Get one lab — owned, not found, owned-by-someone-else (should both 404 identically)
-- [ ] Get one lab — invalid `id` format (non-numeric, negative)
-- [ ] Create lab — happy path
-- [ ] Create lab — duplicate title+description for same user (409)
-- [ ] Create lab — field boundaries (title/description at min/max/over-max length, missing fields)
-- [ ] Update lab — single field, both fields, empty body (400), not owned (404)
-- [ ] Delete lab — happy path, not owned (404), delete twice (second call should 404)
-- [ ] Cross-user isolation — user A cannot read/update/delete user B's lab by ID under any endpoint
+- [ ] List lab — default pagination dan `page`/`limit` eksplisit
+- [ ] List lab — `page`/`limit` tidak valid (bukan angka, negatif, nol, desimal) → seharusnya 400
+- [ ] Search lab — cocok di `title`, cocok di `description`, tidak ada yang cocok, query kosong
+- [ ] Ambil satu lab — milik sendiri, tidak ditemukan, milik orang lain (keduanya harus 404 identik)
+- [ ] Ambil satu lab — format `id` tidak valid (bukan angka, negatif)
+- [ ] Buat lab — happy path
+- [ ] Buat lab — title+description duplikat untuk user yang sama (409)
+- [ ] Buat lab — boundary field (title/description di batas min/max/lebih dari max, field kosong)
+- [ ] Ubah lab — satu field, kedua field, body kosong (400), bukan milik sendiri (404)
+- [ ] Hapus lab — happy path, bukan milik sendiri (404), hapus dua kali (panggilan kedua harus 404)
+- [ ] Isolasi antar-user — user A tidak boleh bisa membaca/mengubah/menghapus lab user B lewat ID di endpoint mana pun
 
-### Cross-Cutting
+### Lintas-Fungsi
 
-- [ ] Missing `Authorization` header on every protected endpoint
-- [ ] Malformed JSON body on every `POST`/`PUT` endpoint
-- [ ] Response shape matches the documented contract (Shape A/B/C — see [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md#-error-handling)) for each error type
-- [ ] CORS/Origin behavior on state-changing requests from disallowed origins
-
----
-
-## 🤖 Automation Coverage Checklist
-
-- [ ] All functional cases above scripted (Postman/Newman, or code-based)
-- [ ] Suite is runnable unattended with a single command
-- [ ] Test data setup/teardown goes through the API, not direct SQL
-- [ ] Suite runs against a configurable base URL (local vs. deployed)
-
-## 📈 Performance Coverage Checklist
-
-- [ ] Baseline load test on `GET /api/labs`
-- [ ] Burst test confirming the auth rate limiter triggers correctly
-- [ ] Stress test identifying the actual bottleneck (bcrypt cost, DB pool size of 10, or unindexed search)
-- [ ] Report comparing observed results to PRD Section 4.2 targets
-
-## 🔒 Security-Focused Coverage Checklist
-
-- [ ] Password never appears in any response body
-- [ ] SQL injection attempts in `email`, `title`, `description`, search query params (expected: safely handled — all queries are parameterized)
-- [ ] XSS payloads (`<script>...`) in `title`/`description` (expected: stripped by the `sanitize` middleware)
-- [ ] JWT tampering (modified payload/signature) is rejected
-- [ ] Expired JWT is rejected
+- [ ] Header `Authorization` kosong di setiap endpoint terproteksi
+- [ ] Body JSON salah bentuk di setiap endpoint `POST`/`PUT`
+- [ ] Bentuk response sesuai kontrak yang didokumentasikan (Bentuk A/B/C — lihat [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md#-penanganan-error)) untuk setiap jenis error
+- [ ] Perilaku CORS/Origin pada request pengubah state dari origin yang tidak diizinkan
 
 ---
 
-## 📝 Notes
+## 🤖 Checklist Cakupan Automation
 
-- The existing `tests/` directory (Jest + Supertest) is a useful reference for exact expected shapes, but writing your own test cases from the PRD first — then comparing against what's already tested — is more valuable practice than only reading the existing suite.
-- Anything found here that deviates from the PRD is a defect: report it (endpoint, request, expected vs. actual, severity) rather than treating it as "how the app works."
+- [ ] Semua kasus fungsional di atas sudah di-script (Postman/Newman, atau berbasis kode)
+- [ ] Suite bisa dijalankan tanpa campur tangan manual dengan satu perintah
+- [ ] Setup/teardown data test lewat API, bukan SQL langsung
+- [ ] Suite berjalan dengan base URL yang bisa dikonfigurasi (lokal vs. deployed)
+
+## 📈 Checklist Cakupan Performance
+
+- [ ] Baseline load test pada `GET /api/labs`
+- [ ] Burst test yang memastikan rate limiter auth memicu dengan benar
+- [ ] Stress test yang mengidentifikasi bottleneck sesungguhnya (cost bcrypt, ukuran DB pool 10, atau pencarian tanpa index)
+- [ ] Laporan yang membandingkan hasil pengamatan dengan target di PRD Bagian 4.2
+
+## 🔒 Checklist Cakupan Fokus Keamanan
+
+- [ ] Password tidak pernah muncul di body response mana pun
+- [ ] Percobaan SQL injection di param `email`, `title`, `description`, query pencarian (diharapkan: ditangani dengan aman — semua query parameterized)
+- [ ] Payload XSS (`<script>...`) di `title`/`description` (diharapkan: dihapus oleh middleware `sanitize`)
+- [ ] Manipulasi JWT (payload/signature diubah) ditolak
+- [ ] JWT kedaluwarsa ditolak
 
 ---
 
-**Last Updated**: 13 September 2026
-**Status**: Active
+## 📝 Catatan
+
+- Direktori `tests/` yang sudah ada (Jest + Supertest) adalah referensi berguna untuk bentuk yang diharapkan secara persis, tapi menulis test case sendiri dari PRD terlebih dahulu — lalu membandingkan dengan yang sudah diuji — adalah latihan yang lebih berharga daripada hanya membaca suite yang sudah ada.
+- Apa pun yang ditemukan di sini yang menyimpang dari PRD adalah defect: laporkan (endpoint, request, hasil yang diharapkan vs. aktual, severity), jangan dianggap sebagai "memang begitu cara kerja aplikasinya."
+
+---
+
+**Terakhir Diperbarui**: 13 September 2026
+**Status**: Aktif

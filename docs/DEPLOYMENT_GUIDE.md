@@ -1,23 +1,23 @@
-# 🚀 Script Labs App - Deployment Guide
+# 🚀 Script Labs App - Panduan Deployment
 
-## Matches the Actual Production Setup (Vultr + PM2 + Nginx + self-hosted PostgreSQL)
+## Sesuai Setup Production Sesungguhnya (Vultr + PM2 + Nginx + PostgreSQL self-hosted)
 
-### 📋 Overview
+### 📋 Gambaran Umum
 
-This guide replaces an earlier draft that described deploying to Render/Heroku/Vercel with a Supabase database. The app is actually deployed on a **Vultr VPS**, running PostgreSQL locally on the same machine, managed by **PM2**, fronted by **Nginx**. See [README.md](../README.md) for the condensed version this guide expands on.
+Panduan ini menggantikan draf sebelumnya yang menjelaskan deployment ke Render/Heroku/Vercel dengan database Supabase. Aplikasi ini sebenarnya di-deploy di **Vultr VPS**, menjalankan PostgreSQL secara lokal di mesin yang sama, dikelola oleh **PM2**, dan berada di belakang **Nginx** (opsional juga di belakang Cloudflare). Lihat [README.md](../README.md) untuk versi ringkas yang dijabarkan panduan ini.
 
 ---
 
-## 🔧 Prerequisites
+## 🔧 Prasyarat
 
 - **Node.js**: >= 18.0.0
 - **npm**: >= 8.0.0
-- **PostgreSQL**: >= 12 (self-hosted — no managed provider required)
-- A VPS (this project uses Vultr; any Ubuntu/Debian VPS works the same way)
+- **PostgreSQL**: >= 12 (self-hosted — tidak butuh provider terkelola)
+- VPS (proyek ini memakai Vultr; VPS Ubuntu/Debian apa pun bekerja dengan cara yang sama)
 
 ---
 
-## 📦 Local Development Setup
+## 📦 Setup Development Lokal
 
 ### 1. Clone & Install
 
@@ -31,42 +31,42 @@ npm install
 
 ```bash
 psql -U postgres -c "CREATE DATABASE scriptlabs_db;"
-psql -U postgres -c "CREATE USER scriptlabs_user WITH PASSWORD 'your_password';"
+psql -U postgres -c "CREATE USER scriptlabs_user WITH PASSWORD 'password_kamu';"
 psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE scriptlabs_db TO scriptlabs_user;"
-psql "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
+psql "postgresql://scriptlabs_user:password_kamu@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
 ```
 
-### 3. Environment Configuration
+### 3. Konfigurasi Environment
 
 ```bash
 cp .env.template .env
 ```
 
-Minimum required values:
+Nilai minimum yang dibutuhkan:
 
 ```env
 PORT=3000
 NODE_ENV=development
-DATABASE_URL=postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db
-JWT_SECRET=<a long random string>
+DATABASE_URL=postgresql://scriptlabs_user:password_kamu@localhost:5432/scriptlabs_db
+JWT_SECRET=<string random yang panjang>
 FRONTEND_URL=http://localhost:5173
 ```
 
-### 4. Run
+### 4. Jalankan
 
 ```bash
 npm run dev     # nodemon, auto-restart
-# or
+# atau
 npm start
 ```
 
-Verify: `http://localhost:3000/health` and `http://localhost:3000/api-docs`.
+Verifikasi: `http://localhost:3000/health` dan `http://localhost:3000/api-docs`.
 
 ---
 
-## 🌐 Production Deployment (Vultr VPS)
+## 🌐 Deployment Production (Vultr VPS)
 
-### 1. Provision & Clone
+### 1. Provisioning & Clone
 
 ```bash
 cd /root
@@ -75,31 +75,31 @@ cd script-labs
 npm install
 ```
 
-### 2. PostgreSQL on the VPS
+### 2. PostgreSQL di VPS
 
 ```sql
 CREATE DATABASE scriptlabs_db;
-CREATE USER scriptlabs_user WITH PASSWORD 'your_password';
+CREATE USER scriptlabs_user WITH PASSWORD 'password_kamu';
 GRANT ALL PRIVILEGES ON DATABASE scriptlabs_db TO scriptlabs_user;
 ALTER DATABASE scriptlabs_db OWNER TO scriptlabs_user;
 ```
 
 ```bash
-psql "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
+psql "postgresql://scriptlabs_user:password_kamu@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
 ```
 
-### 3. Environment Variables (`.env` on the VPS)
+### 3. Environment Variable (`.env` di VPS)
 
 ```env
 PORT=5000
 NODE_ENV=production
-DATABASE_URL=postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db
-JWT_SECRET=<strong production secret, 64+ chars>
+DATABASE_URL=postgresql://scriptlabs_user:password_kamu@localhost:5432/scriptlabs_db
+JWT_SECRET=<secret production yang kuat, 64+ karakter>
 JWT_EXPIRES_IN=24h
 FRONTEND_URL=https://labs.hendri.me
 ```
 
-### 4. Run with PM2
+### 4. Jalankan dengan PM2
 
 ```bash
 cd /root/script-labs
@@ -134,7 +134,7 @@ nginx -t
 systemctl reload nginx
 ```
 
-> The `X-Forwarded-For` header set here is what the rate limiter's `keyGenerator` reads (see `backend/middlewares/rateLimiter.js`) — without it, all traffic through Nginx would appear to originate from `127.0.0.1`/`::1` to the app.
+> Kalau traffic lewat Cloudflare di depan Nginx, rate limiter (`backend/middlewares/rateLimiter.js`) memprioritaskan header `CF-Connecting-IP` (tidak bisa dipalsukan client karena berasal dari koneksi TCP asli ke edge Cloudflare) sebelum jatuh ke `X-Forwarded-For`/`req.ip`. Header `X-Forwarded-For` yang di-set di config Nginx di atas tetap penting untuk traffic yang tidak lewat Cloudflare (akses langsung/lokal) — tanpa salah satu dari kedua header ini, rate limiter akan menganggap semua traffic berasal dari satu IP yang sama.
 
 ### 6. SSL
 
@@ -145,14 +145,14 @@ curl https://api-script-labs.hendri.me/health
 
 ---
 
-## 🔒 Pre-Deployment Security Checklist
+## 🔒 Checklist Keamanan Pra-Deployment
 
-- [ ] `JWT_SECRET` is strong, unique, and not committed to git
-- [ ] `.env` is present on the server and not committed to git
-- [ ] `DATABASE_URL` credentials are not the Postgres defaults
-- [ ] CORS `FRONTEND_URL` points to the real frontend origin
-- [ ] Rate limiting is confirmed active on `/api/auth/register` and `/api/auth/login` (`curl` them 6 times in a row and expect a 429 on the 6th)
-- [ ] `NODE_ENV=production` (this disables the rate-limiter bypass that only applies when `NODE_ENV=test`)
+- [ ] `JWT_SECRET` kuat, unik, dan tidak di-commit ke git
+- [ ] `.env` ada di server dan tidak di-commit ke git
+- [ ] Kredensial `DATABASE_URL` bukan default Postgres
+- [ ] `FRONTEND_URL` CORS mengarah ke origin frontend yang benar
+- [ ] Rate limiting dipastikan aktif di `/api/auth/register` dan `/api/auth/login` (`curl` 6 kali berturut-turut dan pastikan 429 muncul di percobaan ke-6)
+- [ ] `NODE_ENV=production` (ini menonaktifkan bypass rate-limiter yang hanya berlaku saat `NODE_ENV=test`)
 
 ---
 
@@ -160,36 +160,36 @@ curl https://api-script-labs.hendri.me/health
 
 ```bash
 mkdir -p /root/backups/script-labs
-pg_dump "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" > /root/backups/script-labs/scriptlabs_backup.sql
+pg_dump "postgresql://scriptlabs_user:password_kamu@localhost:5432/scriptlabs_db" > /root/backups/script-labs/scriptlabs_backup.sql
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### 500 on login/register
+### 500 saat login/register
 
-Check `pm2 logs script-labs-api` — the actual database error is printed server-side even though the client only sees a generic message (see `backend/routes/authRoutes.js`). The most common cause is the `users`/`labs` table schema not matching `database/schema_pg.sql` (e.g. a stale table created from an older schema draft).
+Cek `pm2 logs script-labs-api` — error database yang sesungguhnya tetap dicetak di sisi server meski client hanya melihat pesan generik (lihat `backend/routes/authRoutes.js`). Penyebab paling umum adalah skema tabel `users`/`labs` yang tidak cocok dengan `database/schema_pg.sql` (mis. tabel lama yang dibuat dari draf skema versi sebelumnya).
 
-### CORS errors
+### Error CORS
 
-Confirm `FRONTEND_URL` in `.env` matches the calling origin exactly, then `pm2 restart script-labs-api --update-env`.
+Pastikan `FRONTEND_URL` di `.env` cocok persis dengan origin pemanggil, lalu `pm2 restart script-labs-api --update-env`.
 
-### Rate limiting seems to not apply / applies to the wrong IP
+### Rate limiting sepertinya tidak berlaku / berlaku ke IP yang salah
 
-Check that Nginx is actually forwarding `X-Forwarded-For` (see the config above) — otherwise every client behind the proxy is rate-limited as a single IP.
+Cek apakah Nginx benar-benar meneruskan `X-Forwarded-For` (lihat config di atas), dan kalau memakai Cloudflare, pastikan `CF-Connecting-IP` juga sampai ke aplikasi — kalau tidak, semua client di belakang proxy akan dibatasi rate sebagai satu IP yang sama.
 
-### Performance/load testing considerations
+### Pertimbangan untuk performance/load testing
 
-Before running load or performance tests against this deployment, be aware this is a single small VPS running the API, Nginx, and PostgreSQL together, with no autoscaling and a flat monthly billing plan (not pay-per-request). Heavy sustained testing can affect real users of the same instance and, in extreme/attack-level cases, bandwidth overage — prefer a separate staging VPS for performance testing when possible.
-
----
-
-## 📚 Endpoint Reference
-
-See [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md) for the full, current endpoint list and contracts.
+Sebelum menjalankan load atau performance test terhadap deployment ini, perlu diingat ini adalah satu VPS kecil yang menjalankan API, Nginx, dan PostgreSQL bersamaan, tanpa autoscaling, dan dengan billing bulanan flat (bukan pay-per-request). Testing berat yang berkelanjutan bisa memengaruhi user asli di instance yang sama dan, dalam kasus ekstrem/setara serangan, bisa memicu biaya kelebihan bandwidth — sebaiknya pakai VPS staging terpisah untuk performance testing kalau memungkinkan.
 
 ---
 
-**Last Updated**: 13 September 2026
-**Status**: Current / Authoritative
+## 📚 Referensi Endpoint
+
+Lihat [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md) untuk daftar endpoint lengkap dan kontrak terkini.
+
+---
+
+**Terakhir Diperbarui**: 13 September 2026
+**Status**: Aktif / Acuan Utama

@@ -1,35 +1,35 @@
-# 📊 Script Labs App - Database Architecture V2.0
+# 📊 Script Labs App - Arsitektur Database V2.0
 
-## 📋 Document Information
+## 📋 Informasi Dokumen
 
-- **Version**: 2.0 (rewritten to match `database/schema_pg.sql` and actual queries in `backend/routes/*.js`)
-- **Date**: 13 September 2026
-- **Status**: Current / Authoritative
-- **Related**: [PRD V2.0](./PRD_Script_Labs_V2.md), [API Documentation](./API_DOCUMENTATION_V2.md)
+- **Versi**: 2.0 (ditulis ulang agar sesuai dengan `database/schema_pg.sql` dan query aktual di `backend/routes/*.js`)
+- **Tanggal**: 13 September 2026
+- **Status**: Aktif / Acuan Utama
+- **Terkait**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Dokumentasi API](./API_DOCUMENTATION_V2.md)
 
 ---
 
-## 🎯 Overview
+## 🎯 Gambaran Umum
 
-Script Labs uses a small, self-hosted **PostgreSQL** database with two tables. There is no managed database service (no Supabase, no RLS, no full-text search, no Redis) — everything runs on the same server as the API via the `pg` (node-postgres) driver.
+Script Labs memakai database **PostgreSQL self-hosted** yang kecil, dengan dua tabel. Tidak ada layanan database terkelola (bukan Supabase, tidak ada RLS, tidak ada full-text search, tidak ada Redis) — semuanya berjalan di server yang sama dengan API lewat driver `pg` (node-postgres).
 
 ```
 🗄️ Database Stack
-├── Engine: PostgreSQL (self-hosted, e.g. on the same Vultr VPS as the API)
+├── Engine: PostgreSQL (self-hosted, mis. di Vultr VPS yang sama dengan API)
 ├── Client: pg (node-postgres) — backend/db.js
-├── Connection: single Pool, configured via DATABASE_URL
-└── Migrations: plain SQL file, database/schema_pg.sql (no migration framework)
+├── Koneksi: satu Pool, dikonfigurasi lewat DATABASE_URL
+└── Migrasi: file SQL biasa, database/schema_pg.sql (tanpa migration framework)
 ```
 
 ---
 
-## 📊 Schema
+## 📊 Skema
 
 ### Entity Relationship
 
 ```mermaid
 erDiagram
-    users ||--o{ labs : "owns"
+    users ||--o{ labs : "memiliki"
 
     users {
         serial id PK
@@ -51,7 +51,7 @@ erDiagram
     }
 ```
 
-### Table: `users`
+### Tabel: `users`
 
 ```sql
 CREATE TABLE users (
@@ -65,15 +65,15 @@ CREATE TABLE users (
 );
 ```
 
-| Column | Notes |
-|--------|-------|
-| `id` | Plain auto-incrementing integer, **not** a UUID. This is what's embedded in the JWT as `userId`. |
-| `email` | Unique, matched case-insensitively by the application (lowercased before every query). |
-| `password_hash` | bcrypt hash, cost factor 12. Never returned by any endpoint. |
-| `role` | Always `"user"` today — there is no role-based access control implemented, this column is reserved. |
-| `status` | `"active"` or `"locked"`. A `"locked"` status makes login return 403. |
+| Kolom | Catatan |
+|-------|---------|
+| `id` | Bilangan bulat auto-increment biasa, **bukan** UUID. Inilah yang ditanam sebagai `userId` di dalam JWT. |
+| `email` | Unik, dicocokkan tidak case-sensitive oleh aplikasi (di-lowercase sebelum setiap query). |
+| `password_hash` | Hash bcrypt, cost factor 12. Tidak pernah dikembalikan oleh endpoint mana pun. |
+| `role` | Selalu `"user"` saat ini — belum ada role-based access control yang diimplementasikan, kolom ini dicadangkan untuk masa depan. |
+| `status` | `"active"` atau `"locked"`. Status `"locked"` membuat login mengembalikan 403. |
 
-### Table: `labs`
+### Tabel: `labs`
 
 ```sql
 CREATE TABLE labs (
@@ -87,39 +87,39 @@ CREATE TABLE labs (
 );
 ```
 
-| Column | Notes |
-|--------|-------|
-| `id` | Plain auto-incrementing integer. |
-| `title` | 1-255 characters (enforced by application validation, not a DB constraint). |
-| `description` | 1-1000 characters (enforced by application validation). |
-| `user_id` | Owner of the lab. If the owning user is deleted, `user_id` is set to `NULL` rather than cascading a delete of the lab. |
+| Kolom | Catatan |
+|-------|---------|
+| `id` | Bilangan bulat auto-increment biasa. |
+| `title` | 1-255 karakter (divalidasi di level aplikasi, bukan constraint database). |
+| `description` | 1-1000 karakter (divalidasi di level aplikasi). |
+| `user_id` | Pemilik lab. Jika user pemiliknya dihapus, `user_id` di-set `NULL`, bukan ikut menghapus lab-nya (tidak ada cascade delete). |
 
-> There is **no** `password_reset_tokens`, `user_sessions`, `search_vector`, `category`, `rating`, `isbn`, or `reading_status` column/table anywhere in this schema. Earlier draft docs described those; they were never built.
+> Tidak ada tabel/kolom `password_reset_tokens`, `user_sessions`, `search_vector`, `category`, `rating`, `isbn`, atau `reading_status` di mana pun dalam skema ini. Draf dokumen sebelumnya pernah menyebutkan itu semua; tidak pernah benar-benar dibangun.
 
 ---
 
-## 🔍 Query Patterns Actually Used
+## 🔍 Pola Query yang Benar-Benar Dipakai
 
-All labs queries are scoped by `user_id` taken from the JWT (never trusted from the request body), so cross-user access is prevented at the query level:
+Semua query lab di-scope dengan `user_id` yang diambil dari JWT (tidak pernah dipercaya dari body request), sehingga akses lintas-user dicegah di level query:
 
 ```sql
 -- list / search
 SELECT * FROM labs WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;
 SELECT * FROM labs WHERE user_id = $1 AND (title ILIKE $2 OR description ILIKE $2) ORDER BY created_at DESC LIMIT $3 OFFSET $4;
 
--- get one / update / delete (all scoped by user_id in the WHERE clause)
+-- ambil satu / update / delete (semua di-scope dengan user_id di klausa WHERE)
 SELECT * FROM labs WHERE id = $1 AND user_id = $2;
 UPDATE labs SET title = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING *;
 DELETE FROM labs WHERE id = $1 AND user_id = $2 RETURNING *;
 ```
 
-All queries are parameterized (`$1`, `$2`, ...) — there is no string-concatenated SQL anywhere in the codebase, so SQL injection via these inputs is not a viable attack surface as currently written.
+Semua query bersifat parameterized (`$1`, `$2`, ...) — tidak ada SQL hasil concatenation string di seluruh codebase, sehingga SQL injection lewat input-input ini bukan celah serangan yang bisa dieksploitasi pada kode saat ini.
 
-No explicit indexes beyond the primary keys and the `email` unique constraint exist today. There is **no full-text search index** — search uses `ILIKE '%term%'`, which does a sequential scan; this is a legitimate, easy performance-test target for QA (search latency should grow with row count in the absence of an index).
+Belum ada index eksplisit selain primary key dan unique constraint pada `email`. **Tidak ada index full-text search** — pencarian memakai `ILIKE '%kata%'` yang melakukan sequential scan; ini target performance-testing yang sah dan mudah bagi QA (latensi pencarian seharusnya bertambah seiring bertambahnya jumlah baris tanpa index).
 
 ---
 
-## 🔌 Connection Handling
+## 🔌 Penanganan Koneksi
 
 ```javascript
 // backend/db.js
@@ -129,23 +129,23 @@ const pool = new Pool({
 });
 ```
 
-- A single connection `Pool` is created at process start with the **default** pool size (`max: 10` connections — not explicitly configured). Under concurrent load (e.g. performance testing), this pool size is a realistic bottleneck to observe: requests beyond 10 concurrent DB-bound operations will queue.
-- There is no read replica, no caching layer, and no connection retry/backoff logic — a database outage surfaces as request-level 500 errors.
+- Satu `Pool` koneksi dibuat saat proses dimulai dengan ukuran **default** (`max: 10` koneksi — tidak dikonfigurasi secara eksplisit). Di bawah beban bersamaan (mis. saat performance testing), ukuran pool ini adalah batas konkurensi yang realistis untuk diamati: request yang melebihi 10 operasi DB bersamaan akan mengantre.
+- Tidak ada read replica, tidak ada caching layer, dan tidak ada logic retry/backoff koneksi — gangguan database akan muncul sebagai error 500 di level request.
 
 ---
 
-## 💾 Setting Up a Local Database
+## 💾 Setup Database Lokal
 
-See [README.md](../README.md#local-development) for the full step-by-step, or the short version:
+Lihat [README.md](../README.md#local-development) untuk panduan lengkap langkah demi langkah, atau versi singkatnya:
 
 ```bash
 psql -U postgres -c "CREATE DATABASE scriptlabs_db;"
 psql "postgresql://<user>:<pass>@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
 ```
 
-Do **not** insert seed users manually with plaintext or arbitrary hashes — always create test accounts via `POST /api/auth/register` so `password_hash` is produced by the same bcrypt call the login flow expects.
+Jangan membuat user seed manual dengan password plaintext atau hash sembarangan — selalu buat akun test lewat `POST /api/auth/register` supaya `password_hash` dihasilkan oleh pemanggilan bcrypt yang sama seperti yang diharapkan alur login.
 
 ---
 
-**Document Status**: ✅ Complete
-**Last Updated**: 13 September 2026
+**Status Dokumen**: ✅ Lengkap
+**Terakhir Diperbarui**: 13 September 2026

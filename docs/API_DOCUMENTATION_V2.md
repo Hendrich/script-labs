@@ -1,41 +1,41 @@
-# 🚀 Script Labs App - API Documentation V2.0
+# 🚀 Script Labs App - Dokumentasi API V2.0
 
-## 📋 Document Information
+## 📋 Informasi Dokumen
 
-- **Version**: 2.0 (rewritten to match the actual implemented API — see `backend/routes/*.js`)
-- **Date**: 13 September 2026
-- **Status**: Current / Authoritative
-- **Related**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Database Architecture](./DATABASE_ARCHITECTURE_V2.md)
+- **Versi**: 2.0 (ditulis ulang agar sesuai dengan API yang benar-benar diimplementasikan — lihat `backend/routes/*.js`)
+- **Tanggal**: 13 September 2026
+- **Status**: Aktif / Acuan Utama
+- **Terkait**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Arsitektur Database](./DATABASE_ARCHITECTURE_V2.md)
 
-> This document lists **only endpoints that actually exist in the codebase**. Earlier drafts referenced forgot-password, Supabase auth, book ratings/ISBN, bulk operations, and admin/metrics endpoints — none of those exist. Do not build automation or test cases against them.
+> Dokumen ini hanya mendaftar endpoint yang **benar-benar ada di codebase**. Draf sebelumnya menyebut lupa password, auth Supabase, rating/ISBN buku, operasi bulk, dan endpoint admin/metrics — semua itu tidak ada. Jangan membangun automation atau test case terhadap fitur-fitur tersebut.
 
 ---
 
-## 🎯 API Overview
+## 🎯 Gambaran API
 
-Script Labs is a stateless REST API. There is **no frontend served by this backend** — it is API-only, intended as a practice target for QA automation and performance testing.
+Script Labs adalah REST API stateless. **Tidak ada frontend** yang disajikan oleh backend ini — murni API, ditujukan sebagai target latihan untuk automation dan performance testing QA.
 
 ### Base URL
 
-Configure this per environment (local dev, or your deployed Vultr instance):
+Sesuaikan per environment (dev lokal, atau instance Vultr yang sudah di-deploy):
 
 ```
-http://localhost:3000/api          (local dev)
-https://<your-domain>/api          (deployed)
+http://localhost:3000/api          (dev lokal)
+https://<domain-kamu>/api          (deployed)
 ```
 
-### API Characteristics
+### Karakteristik API
 
-- **Authentication**: JWT only (`Authorization: Bearer <token>`), no third-party auth
-- **Content-Type**: `application/json` for all request/response bodies
-- **Rate Limiting**: only on `/api/auth/register` and `/api/auth/login` (5 requests / 15 minutes / IP)
-- **Interactive docs**: Swagger UI at `/api-docs` (see [SWAGGER_UI_GUIDE.md](./SWAGGER_UI_GUIDE.md))
+- **Autentikasi**: JWT saja (`Authorization: Bearer <token>`), tidak ada auth pihak ketiga
+- **Content-Type**: `application/json` untuk semua body request/response
+- **Rate Limiting**: hanya di `/api/auth/register` dan `/api/auth/login` (5 request / 15 menit / IP)
+- **Dokumentasi interaktif**: Swagger UI di `/api-docs` (lihat [SWAGGER_UI_GUIDE.md](./SWAGGER_UI_GUIDE.md))
 
 ---
 
-## 🔐 Authentication
+## 🔐 Autentikasi
 
-### Authentication Flow
+### Alur Autentikasi
 
 ```mermaid
 sequenceDiagram
@@ -43,40 +43,40 @@ sequenceDiagram
     participant API as API Server
     participant DB as PostgreSQL
 
-    C->>API: POST /api/auth/register or /login
-    API->>DB: Validate / create user
-    DB->>API: User record
-    API->>C: JWT (24h expiry)
+    C->>API: POST /api/auth/register atau /login
+    API->>DB: Validasi / buat user
+    DB->>API: Data user
+    API->>C: JWT (kedaluwarsa 24 jam)
 
-    C->>API: Any protected request + JWT
-    API->>API: Verify JWT signature & expiry
-    API->>DB: Authorized query (scoped to user_id)
+    C->>API: Request terproteksi apa pun + JWT
+    API->>API: Verifikasi signature & masa berlaku JWT
+    API->>DB: Query yang di-scope ke user_id
     DB->>API: Data
     API->>C: Response
 ```
 
-### Authentication Header
+### Header Autentikasi
 
 ```http
 Authorization: Bearer <jwt_token>
 ```
 
-There is no separate "Supabase token" or refresh token — a single JWT (default 24h expiry) is the entire auth mechanism.
+Tidak ada "Supabase token" atau refresh token terpisah — satu JWT (default kedaluwarsa 24 jam) adalah keseluruhan mekanisme auth.
 
 ---
 
-## 🔑 Auth Endpoints (`/api/auth`)
+## 🔑 Endpoint Auth (`/api/auth`)
 
 ### 1. Register
 
-**`POST /api/auth/register`** — public, rate-limited (5/15min/IP)
+**`POST /api/auth/register`** — publik, dibatasi rate limit (5/15menit/IP)
 
 **Request Body**
 
 ```json
 {
   "email": "user@example.com",
-  "password": "at-least-6-chars"
+  "password": "minimal-6-karakter"
 }
 ```
 
@@ -95,7 +95,7 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**409 Conflict** — email already registered
+**409 Conflict** — email sudah terdaftar
 
 ```json
 {
@@ -105,7 +105,7 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**400 Bad Request** — validation failure (missing/invalid email, password < 6 or > 128 chars)
+**400 Bad Request** — gagal validasi (email kosong/tidak valid, password < 6 atau > 128 karakter)
 
 ```json
 {
@@ -118,7 +118,7 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**429 Too Many Requests** — more than 5 attempts / 15 min from the same IP
+**429 Too Many Requests** — lebih dari 5 percobaan / 15 menit dari IP yang sama
 
 ```json
 {
@@ -136,12 +136,12 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 
 ### 2. Login
 
-**`POST /api/auth/login`** — public, rate-limited (5/15min/IP)
+**`POST /api/auth/login`** — publik, dibatasi rate limit (5/15menit/IP)
 
 **Request Body**
 
 ```json
-{ "email": "user@example.com", "password": "at-least-6-chars" }
+{ "email": "user@example.com", "password": "minimal-6-karakter" }
 ```
 
 **200 OK**
@@ -158,7 +158,7 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**401 Unauthorized** — wrong email OR wrong password (same message for both, by design — anti user-enumeration)
+**401 Unauthorized** — email salah ATAU password salah (pesan sama untuk keduanya, memang disengaja — anti user-enumeration)
 
 ```json
 {
@@ -168,7 +168,7 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**403 Forbidden** — account `status` is `"locked"`
+**403 Forbidden** — akun berstatus `"locked"`
 
 ```json
 {
@@ -178,13 +178,13 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**400 / 429** — same shapes as Register above.
+**400 / 429** — bentuk sama seperti Register di atas.
 
 ---
 
 ### 3. Logout
 
-**`POST /api/auth/logout`** — public (no token required)
+**`POST /api/auth/logout`** — publik (tidak butuh token)
 
 **200 OK**
 
@@ -199,9 +199,9 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 
 ---
 
-### 4. Get Current User
+### 4. Ambil User yang Sedang Login
 
-**`GET /api/auth/me`** — requires `Authorization: Bearer <token>`
+**`GET /api/auth/me`** — butuh `Authorization: Bearer <token>`
 
 **200 OK**
 
@@ -213,18 +213,18 @@ There is no separate "Supabase token" or refresh token — a single JWT (default
 }
 ```
 
-**401 Unauthorized** (missing/invalid/expired token) — note this error shape comes from the auth middleware, not the standard error envelope:
+**401 Unauthorized** (token kosong/tidak valid/kedaluwarsa) — catatan: bentuk error ini berasal dari auth middleware, bukan envelope error standar:
 
 ```json
 { "message": "No token provided" }
 ```
-or `{ "message": "Invalid token format" }` or `{ "message": "Invalid token" }`.
+atau `{ "message": "Invalid token format" }` atau `{ "message": "Invalid token" }`.
 
 ---
 
-### 5. Verify Token
+### 5. Verifikasi Token
 
-**`POST /api/auth/verify-token`** — requires `Authorization: Bearer <token>`
+**`POST /api/auth/verify-token`** — butuh `Authorization: Bearer <token>`
 
 **200 OK**
 
@@ -237,25 +237,25 @@ or `{ "message": "Invalid token format" }` or `{ "message": "Invalid token" }`.
 }
 ```
 
-**401 Unauthorized** — same shape as `/me` above.
+**401 Unauthorized** — bentuk sama seperti `/me` di atas.
 
 ---
 
-## 📚 Lab Endpoints (`/api/labs`)
+## 📚 Endpoint Lab (`/api/labs`)
 
-All endpoints below require `Authorization: Bearer <token>`. A user only ever sees/modifies their own labs.
+Semua endpoint di bawah butuh `Authorization: Bearer <token>`. Seorang user hanya bisa melihat/mengubah lab miliknya sendiri.
 
-### 1. List Labs
+### 1. Daftar Lab
 
 **`GET /api/labs`**
 
-**Query Parameters**
+**Query Parameter**
 
-| Param | Type | Default | Notes |
-|-------|------|---------|-------|
+| Param | Tipe | Default | Catatan |
+|-------|------|---------|---------|
 | `page` | integer | 1 | |
-| `limit` | integer | 50 | capped at 100 |
-| `search` | string | – | matches `title` OR `description`, case-insensitive |
+| `limit` | integer | 50 | maksimum 100 |
+| `search` | string | – | cocok dengan `title` ATAU `description`, tidak case-sensitive |
 
 **200 OK**
 
@@ -270,23 +270,23 @@ All endpoints below require `Authorization: Bearer <token>`. A user only ever se
 }
 ```
 
-### 2. Search Labs
+### 2. Cari Lab
 
 **`GET /api/labs/search`**
 
-Same as above but the query param is `q` instead of `search`, default `limit` is 10, and the response also echoes `search_query`.
+Sama seperti di atas tapi query param bernama `q`, bukan `search`, default `limit` adalah 10, dan response juga menyertakan echo `search_query`.
 
 ```
 GET /api/labs/search?q=menari&page=1&limit=10
 ```
 
-### 3. Get One Lab
+### 3. Ambil Satu Lab
 
 **`GET /api/labs/:id`**
 
-**200 OK** — the lab object. **404 Not Found** if it doesn't exist or belongs to another user.
+**200 OK** — objek lab. **404 Not Found** jika tidak ada atau milik user lain.
 
-### 4. Create Lab
+### 4. Buat Lab
 
 **`POST /api/labs`**
 
@@ -296,21 +296,21 @@ GET /api/labs/search?q=menari&page=1&limit=10
 { "title": "Lab Baru", "description": "Deskripsi lab, 1-1000 karakter" }
 ```
 
-**201 Created** — the created lab. **409 Conflict** if an identical `title`+`description` already exists for this user. **400 Bad Request** on validation failure.
+**201 Created** — lab yang dibuat. **409 Conflict** jika `title`+`description` identik sudah ada untuk user ini. **400 Bad Request** jika validasi gagal.
 
-### 5. Update Lab
+### 5. Ubah Lab
 
 **`PUT /api/labs/:id`**
 
-**Request Body** (at least one field required)
+**Request Body** (minimal satu field)
 
 ```json
 { "title": "Judul Baru" }
 ```
 
-**200 OK** — updated lab. **400** if body has no valid fields. **404** if not found/not owned.
+**200 OK** — lab yang diperbarui. **400** jika body tidak punya field valid. **404** jika tidak ditemukan/bukan milik user.
 
-### 6. Delete Lab
+### 6. Hapus Lab
 
 **`DELETE /api/labs/:id`**
 
@@ -320,79 +320,79 @@ GET /api/labs/search?q=menari&page=1&limit=10
 { "success": true, "data": { "id": "3" }, "message": "lab deleted successfully", "timestamp": "..." }
 ```
 
-**404** if not found/not owned.
+**404** jika tidak ditemukan/bukan milik user.
 
 ---
 
-## 🩺 Utility Endpoints
+## 🩺 Endpoint Utilitas
 
 ### Health Check
 
-**`GET /health`** — no auth required.
+**`GET /health`** — tidak butuh auth.
 
 ```json
 { "success": true, "message": "Server is healthy", "timestamp": "...", "version": "1.0.0", "nodeEnv": "production" }
 ```
 
-### API Docs
+### Dokumentasi API
 
-**`GET /api-docs`** — Swagger UI (interactive).
+**`GET /api-docs`** — Swagger UI (interaktif).
 
 ---
 
-## 🚨 Error Handling
+## 🚨 Penanganan Error
 
-There are **two different error response shapes** in this API — this is a real, current characteristic of the implementation, not a documentation choice, and QA should write contract tests that catch a regression either way:
+Ada **tiga bentuk response error berbeda** di API ini — ini karakteristik nyata implementasi saat ini, bukan pilihan dokumentasi, dan QA sebaiknya menulis contract test yang menangkap regresi ke arah mana pun:
 
-**Shape A — business-logic errors returned directly by a route** (e.g. `EMAIL_EXISTS`, `AUTH_FAILED`, `USER_LOCKED`, rate-limit errors):
+**Bentuk A — error bisnis yang dikembalikan langsung oleh route** (mis. `EMAIL_EXISTS`, `AUTH_FAILED`, `USER_LOCKED`, error rate-limit):
 
 ```json
 { "success": false, "error": { "message": "...", "code": "..." }, "timestamp": "..." }
 ```
 
-**Shape B — errors thrown to the centralized error handler** (validation errors, unexpected 500s):
+**Bentuk B — error yang dilempar ke error handler terpusat** (error validasi, 500 tak terduga):
 
 ```json
 { "success": false, "status": "fail", "error": { "message": "..." }, "timestamp": "...", "path": "...", "method": "..." }
 ```
 
-**Shape C — auth middleware failures** (`/me`, `/verify-token`, any `/api/labs/*` call with a bad token):
+**Bentuk C — kegagalan auth middleware** (`/me`, `/verify-token`, semua `/api/labs/*` dengan token bermasalah):
 
 ```json
 { "message": "No token provided" }
 ```
 
-### HTTP Status Codes Used
+### HTTP Status Code yang Dipakai
 
-| Status | Meaning | Used for |
-|--------|---------|----------|
-| 200 | OK | Successful GET/PUT/DELETE |
-| 201 | Created | Successful POST (register, create lab) |
-| 400 | Bad Request | Validation errors |
-| 401 | Unauthorized | Missing/invalid/expired token, wrong login credentials |
-| 403 | Forbidden | Locked account |
-| 404 | Not Found | Resource doesn't exist or isn't owned by the caller |
-| 409 | Conflict | Duplicate email, duplicate lab |
-| 429 | Too Many Requests | Rate limit exceeded (auth endpoints only) |
-| 500 | Internal Server Error | Unexpected server/database failure |
+| Status | Arti | Dipakai untuk |
+|--------|------|----------------|
+| 200 | OK | GET/PUT/DELETE sukses |
+| 201 | Created | POST sukses (register, buat lab) |
+| 400 | Bad Request | Error validasi |
+| 401 | Unauthorized | Token kosong/tidak valid/kedaluwarsa, kredensial login salah |
+| 403 | Forbidden | Akun terkunci |
+| 404 | Not Found | Resource tidak ada atau bukan milik pemanggil |
+| 409 | Conflict | Email duplikat, lab duplikat |
+| 429 | Too Many Requests | Rate limit terlampaui (hanya endpoint auth) |
+| 500 | Internal Server Error | Kegagalan server/database tak terduga |
 
 ---
 
 ## 🔧 Rate Limiting
 
-| Endpoint | Limit | Window | Applies in |
+| Endpoint | Limit | Window | Berlaku di |
 |----------|-------|--------|------------|
-| `POST /api/auth/register` | 5 | 15 min per IP | all environments except `NODE_ENV=test` |
-| `POST /api/auth/login` | 5 | 15 min per IP | all environments except `NODE_ENV=test` |
-| `/api/labs/*` | none | – | not rate-limited |
+| `POST /api/auth/register` | 5 | 15 menit per IP | semua environment kecuali `NODE_ENV=test` |
+| `POST /api/auth/login` | 5 | 15 menit per IP | semua environment kecuali `NODE_ENV=test` |
+| `/api/labs/*` | tidak ada | – | tidak dibatasi rate |
 
-Rate-limit responses include a `RateLimit-*` header set (`standardHeaders: true`) and a JSON body with `retryAfter` in seconds.
+Response rate-limit menyertakan header `RateLimit-*` (`standardHeaders: true`) dan body JSON dengan `retryAfter` dalam detik.
 
 ---
 
-## 🧪 Testing the API
+## 🧪 Menguji API
 
-### Using cURL
+### Menggunakan cURL
 
 ```bash
 # Register
@@ -409,7 +409,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 curl -X GET "http://localhost:3000/api/labs?page=1&limit=10" \
   -H "Authorization: Bearer <token>"
 
-# Create a lab
+# Buat lab
 curl -X POST http://localhost:3000/api/labs \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
@@ -418,10 +418,10 @@ curl -X POST http://localhost:3000/api/labs \
 
 ### Postman
 
-A Postman collection lives under `postman/` in this repository — import it alongside an environment that defines `BASE_URL_LOCAL` (or your deployed base URL).
+Koleksi Postman tersedia di folder `postman/` dalam repository ini — import koleksi tersebut beserta environment yang mendefinisikan `BASE_URL_LOCAL` (atau base URL deployment kamu).
 
 ---
 
-**Document Status**: ✅ Complete
-**Last Updated**: 13 September 2026
-**API Version**: 2.0
+**Status Dokumen**: ✅ Lengkap
+**Terakhir Diperbarui**: 13 September 2026
+**Versi API**: 2.0
