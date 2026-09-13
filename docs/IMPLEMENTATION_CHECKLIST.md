@@ -1,436 +1,98 @@
-﻿# Script Labs App - Implementation Checklist
+# Script Labs App - Checklist Testing QA
 
-## Comprehensive Development & Quality Assurance Checklist
+## Checklist Praktis untuk Latihan QA di API Ini
 
-### ðŸ“‹ Overview
+### 📋 Gambaran Umum
 
-Checklist ini menyediakan panduan lengkap untuk pengembangan, testing, dan deployment Script Labs App dengan fokus pada best practices, code quality, dan maintainability.
-
----
-
-## ðŸ—ï¸ Phase 1: Project Structure & Foundation
-
-### âœ… Basic Setup (COMPLETED)
-
-- [x] **Project Initialization**
-
-  - [x] `package.json` dengan dependencies yang tepat
-  - [x] Folder structure (backend/, frontend/)
-  - [x] `.gitignore` untuk sensitive files
-  - [x] `.env` template dan environment variables
-
-- [x] **Backend Foundation**
-
-  - [x] Express.js server setup (`server.js`)
-  - [x] Database connection (`db.js`)
-  - [x] Basic routing structure
-  - [x] CORS configuration
-
-- [x] **Authentication System**
-  - [x] Supabase integration
-  - [x] JWT middleware (`authMiddleware.js`)
-  - [x] Register/Login endpoints
-  - [x] Password hashing dengan bcrypt
+Checklist ini menggantikan "development checklist" generik sebelumnya (yang menyebut Supabase dan fitur lain yang tidak ada di repository ini). Sekarang ruang lingkupnya adalah apa yang benar-benar bisa diuji QA di sisi **backend/API**: yang dijelaskan di [PRD_Script_Labs_V2.md](./PRD_Script_Labs_V2.md) dan [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md). Checklist untuk testing UI/frontend berada di repository terpisah ([script-labs-app](https://github.com/Hendrich/script-labs-app)), di luar cakupan dokumen ini.
 
 ---
 
-## ðŸ”§ Phase 2: Core Features Development
+## ✅ Yang Benar-Benar Sudah Dibangun (fakta di lapangan)
 
-### âœ… API Development (COMPLETED)
-
-- [x] **Authentication Endpoints**
-
-  - [x] `POST /api/auth/register`
-  - [x] `POST /api/auth/login`
-  - [x] JWT token generation
-  - [x] Error handling untuk auth
-
-- [x] **lab CRUD Endpoints**
-
-  - [x] `GET /api/labs` (protected)
-  - [x] `POST /api/labs` (protected)
-  - [x] `PUT /api/labs/:id` (protected)
-  - [x] `DELETE /api/labs/:id` (protected)
-
-- [x] **Frontend Implementation**
-  - [x] Basic HTML structure (`index.html`)
-  - [x] JavaScript untuk API integration (`script.js`)
-  - [x] CSS styling (`styles.css`)
-  - [x] Authentication flow di frontend
+- [x] API Express.js (`backend/server.js`), tanpa frontend yang disajikan repo ini
+- [x] PostgreSQL, self-hosted, satu koneksi `pool` (`backend/db.js`)
+- [x] Auth JWT (register/login/logout/me/verify-token)
+- [x] Hashing password dengan bcrypt
+- [x] CRUD + pencarian lab, semua di-scope ke user yang login
+- [x] Validasi input berbasis Joi
+- [x] Rate limiting pada `/api/auth/register` dan `/api/auth/login`
+- [x] Header keamanan Helmet + pengecekan Origin/Referer kustom
+- [x] Swagger UI di `/api-docs`
+- [x] Test suite Jest/Supertest yang sudah ada (`npm test`)
 
 ---
 
-## ðŸ“š Phase 3: Documentation & API Specification
+## 🧪 Checklist Cakupan Test Fungsional
 
-### âœ… Documentation (COMPLETED)
+### Autentikasi
 
-- [x] **API Documentation**
+- [ ] Register — happy path
+- [ ] Register — email duplikat (tidak case-sensitive: `A@b.com` vs `a@b.com`)
+- [ ] Register — boundary password (5 / 6 / 128 / 129 karakter)
+- [ ] Register — format email tidak valid
+- [ ] Register — rate limit (percobaan ke-6 dalam 15 menit dari IP yang sama)
+- [ ] Login — happy path
+- [ ] Login — password salah / email tidak ada (verifikasi response identik)
+- [ ] Login — akun terkunci (403, bukan 401)
+- [ ] Login — rate limit
+- [ ] Logout — dengan dan tanpa token
+- [ ] `/me` — token valid, token kosong, token kedaluwarsa, token salah bentuk
+- [ ] `/verify-token` — variasi sama seperti `/me`
 
-  - [x] OpenAPI 3.0 specification (`openapi-spec.json`)
-  - [x] Comprehensive endpoint documentation
-  - [x] Schema definitions
-  - [x] Authentication documentation
+### CRUD Lab
 
-- [x] **Postman Collection**
+- [ ] List lab — default pagination dan `page`/`limit` eksplisit
+- [ ] List lab — `page`/`limit` tidak valid (bukan angka, negatif, nol, desimal) → seharusnya 400
+- [ ] Search lab — cocok di `title`, cocok di `description`, tidak ada yang cocok, query kosong
+- [ ] Ambil satu lab — milik sendiri, tidak ditemukan, milik orang lain (keduanya harus 404 identik)
+- [ ] Ambil satu lab — format `id` tidak valid (bukan angka, negatif)
+- [ ] Buat lab — happy path
+- [ ] Buat lab — title+description duplikat untuk user yang sama (409)
+- [ ] Buat lab — boundary field (title/description di batas min/max/lebih dari max, field kosong)
+- [ ] Ubah lab — satu field, kedua field, body kosong (400), bukan milik sendiri (404)
+- [ ] Hapus lab — happy path, bukan milik sendiri (404), hapus dua kali (panggilan kedua harus 404)
+- [ ] Isolasi antar-user — user A tidak boleh bisa membaca/mengubah/menghapus lab user B lewat ID di endpoint mana pun
 
-  - [x] Complete API collection
-  - [x] Environment variables setup
-  - [x] Test scripts untuk automation
-  - [x] Collection documentation
+### Lintas-Fungsi
 
-- [x] **Project Documentation**
-  - [x] README.md dengan setup instructions
-  - [x] API usage examples
-  - [x] Postman collection guide
-
----
-
-## ðŸ” Phase 4: Code Quality & Best Practices
-
-### ðŸ”„ Backend Code Review & Refactoring (IN PROGRESS)
-
-- [ ] **Code Structure Analysis**
-
-  - [ ] Evaluate modularization opportunities
-  - [ ] Check separation of concerns
-  - [ ] Assess code reusability
-  - [ ] Review error handling patterns
-
-- [ ] **Security Review**
-
-  - [ ] Input validation implementation
-  - [ ] SQL injection prevention
-  - [ ] XSS protection
-  - [ ] Rate limiting implementation
-  - [ ] Security headers setup
-
-- [ ] **Performance Optimization**
-  - [ ] Database query optimization
-  - [ ] Connection pooling implementation
-  - [ ] Response caching strategies
-  - [ ] API response time analysis
-
-### ðŸ”„ Frontend Code Review (IN PROGRESS)
-
-- [ ] **Code Organization**
-
-  - [ ] JavaScript modularization
-  - [ ] CSS organization dan naming conventions
-  - [ ] HTML semantic structure
-  - [ ] Separation of concerns
-
-- [ ] **User Experience**
-
-  - [ ] Loading states implementation
-  - [ ] Error message improvements
-  - [ ] Form validation enhancements
-  - [ ] Responsive design validation
-
-- [ ] **Performance & Accessibility**
-  - [ ] Image optimization
-  - [ ] CSS/JS minification
-  - [ ] Accessibility audit (ARIA labels, semantic HTML)
-  - [ ] Cross-browser compatibility
+- [ ] Header `Authorization` kosong di setiap endpoint terproteksi
+- [ ] Body JSON salah bentuk di setiap endpoint `POST`/`PUT`
+- [ ] Bentuk response sesuai kontrak yang didokumentasikan (Bentuk A/B/C — lihat [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md#-penanganan-error)) untuk setiap jenis error
+- [ ] Perilaku CORS/Origin pada request pengubah state dari origin yang tidak diizinkan
 
 ---
 
-## ðŸ§ª Phase 5: Testing Implementation
+## 🤖 Checklist Cakupan Automation
 
-### ðŸ“‹ Backend Testing (PLANNED)
+- [ ] Semua kasus fungsional di atas sudah di-script (Postman/Newman, atau berbasis kode)
+- [ ] Suite bisa dijalankan tanpa campur tangan manual dengan satu perintah
+- [ ] Setup/teardown data test lewat API, bukan SQL langsung
+- [ ] Suite berjalan dengan base URL yang bisa dikonfigurasi (lokal vs. deployed)
 
-- [ ] **Unit Tests**
+## 📈 Checklist Cakupan Performance
 
-  - [ ] Authentication functions testing
-  - [ ] Database utility functions
-  - [ ] Middleware testing
-  - [ ] Route handlers testing
+- [ ] Baseline load test pada `GET /api/labs`
+- [ ] Burst test yang memastikan rate limiter auth memicu dengan benar
+- [ ] Stress test yang mengidentifikasi bottleneck sesungguhnya (cost bcrypt, ukuran DB pool 10, atau pencarian tanpa index)
+- [ ] Laporan yang membandingkan hasil pengamatan dengan target di PRD Bagian 4.2
 
-- [ ] **Integration Tests**
+## 🔒 Checklist Cakupan Fokus Keamanan
 
-  - [ ] API endpoint testing
-  - [ ] Database integration testing
-  - [ ] Authentication flow testing
-  - [ ] Error scenarios testing
-
-- [ ] **API Testing**
-  - [ ] Automated Postman tests
-  - [ ] Load testing untuk performance
-  - [ ] Security testing
-  - [ ] Edge case testing
-
-### ðŸ“‹ Frontend Testing (PLANNED)
-
-- [ ] **Functionality Testing**
-
-  - [ ] Form submission testing
-  - [ ] API integration testing
-  - [ ] Authentication flow testing
-  - [ ] CRUD operations testing
-
-- [ ] **UI/UX Testing**
-  - [ ] Responsive design testing
-  - [ ] Cross-browser testing
-  - [ ] Accessibility testing
-  - [ ] User interaction testing
+- [ ] Password tidak pernah muncul di body response mana pun
+- [ ] Percobaan SQL injection di param `email`, `title`, `description`, query pencarian (diharapkan: ditangani dengan aman — semua query parameterized)
+- [ ] Payload XSS (`<script>...`) di `title`/`description` (diharapkan: dihapus oleh middleware `sanitize`)
+- [ ] Manipulasi JWT (payload/signature diubah) ditolak
+- [ ] JWT kedaluwarsa ditolak
 
 ---
 
-## ðŸš€ Phase 6: Deployment & DevOps
+## 📝 Catatan
 
-### ðŸ“‹ Deployment Preparation (PLANNED)
-
-- [ ] **Environment Configuration**
-
-  - [ ] Production environment variables
-  - [ ] Database migration scripts
-  - [ ] SSL certificate setup
-  - [ ] Domain configuration
-
-- [ ] **CI/CD Pipeline**
-
-  - [ ] Automated testing pipeline
-  - [ ] Build process optimization
-  - [ ] Deployment automation
-  - [ ] Rollback procedures
-
-- [ ] **Monitoring & Logging**
-  - [ ] Application monitoring setup
-  - [ ] Error tracking implementation
-  - [ ] Performance monitoring
-  - [ ] Log aggregation
-
-### ðŸ“‹ Production Deployment (PLANNED)
-
-- [ ] **Infrastructure Setup**
-
-  - [ ] Production server configuration
-  - [ ] Database optimization
-  - [ ] CDN setup untuk static assets
-  - [ ] Backup strategies
-
-- [ ] **Post-Deployment**
-  - [ ] Health checks implementation
-  - [ ] Performance validation
-  - [ ] Security audit
-  - [ ] User acceptance testing
+- Direktori `tests/` yang sudah ada (Jest + Supertest) adalah referensi berguna untuk bentuk yang diharapkan secara persis, tapi menulis test case sendiri dari PRD terlebih dahulu — lalu membandingkan dengan yang sudah diuji — adalah latihan yang lebih berharga daripada hanya membaca suite yang sudah ada.
+- Apa pun yang ditemukan di sini yang menyimpang dari PRD adalah defect: laporkan (endpoint, request, hasil yang diharapkan vs. aktual, severity), jangan dianggap sebagai "memang begitu cara kerja aplikasinya."
 
 ---
 
-## ðŸ“Š Phase 7: Quality Metrics & Monitoring
-
-### ðŸ“‹ Code Quality Metrics (PLANNED)
-
-- [ ] **Code Analysis**
-
-  - [ ] Code coverage measurement (target: >80%)
-  - [ ] Cyclomatic complexity analysis
-  - [ ] Code duplication detection
-  - [ ] Technical debt assessment
-
-- [ ] **Performance Metrics**
-  - [ ] API response time monitoring
-  - [ ] Database query performance
-  - [ ] Frontend load time analysis
-  - [ ] Memory usage optimization
-
-### ðŸ“‹ Security Audit (PLANNED)
-
-- [ ] **Security Testing**
-
-  - [ ] Penetration testing
-  - [ ] Dependency vulnerability scan
-  - [ ] Authentication security review
-  - [ ] Data encryption validation
-
-- [ ] **Compliance Check**
-  - [ ] OWASP Top 10 compliance
-  - [ ] Data privacy considerations
-  - [ ] Security best practices implementation
-  - [ ] Regular security updates
-
----
-
-## ðŸ”§ Specific Improvement Recommendations
-
-### ðŸ”„ Backend Improvements (IDENTIFIED)
-
-1. **Error Handling Enhancement**
-
-   - Implement centralized error handling middleware
-   - Standardize error response format
-   - Add proper HTTP status codes
-   - Implement request logging
-
-2. **Security Hardening**
-
-   - Add input validation dengan joi/express-validator
-   - Implement rate limiting
-   - Add security headers dengan helmet
-   - Setup request sanitization
-
-3. **Database Optimization**
-
-   - Add database connection pooling
-   - Implement query optimization
-   - Add database indexing
-   - Setup connection retry logic
-
-4. **API Enhancement**
-   - Add API versioning
-   - Implement pagination untuk lab listing
-   - Add search/filtering capabilities
-   - Setup response caching
-
-### ðŸ”„ Frontend Improvements (IDENTIFIED)
-
-1. **Code Organization**
-
-   - Modularize JavaScript code
-   - Implement proper state management
-   - Add configuration management
-   - Setup build process
-
-2. **User Experience**
-
-   - Add loading indicators
-   - Improve error messaging
-   - Implement form validation
-   - Add confirmation dialogs
-
-3. **Performance**
-
-   - Implement lazy loading
-   - Add image optimization
-   - Minimize HTTP requests
-   - Setup service worker untuk caching
-
-4. **Accessibility**
-   - Add ARIA labels
-   - Improve keyboard navigation
-   - Enhance screen reader support
-   - Implement semantic HTML
-
----
-
-## ðŸ“ˆ Success Metrics & KPIs
-
-### âœ… Technical Metrics
-
-- [ ] **Code Quality**
-
-  - [ ] Test coverage: >80%
-  - [ ] Code complexity: <10 cyclomatic complexity
-  - [ ] Zero critical security vulnerabilities
-  - [ ] Documentation coverage: >90%
-
-- [ ] **Performance**
-  - [ ] API response time: <500ms
-  - [ ] Frontend load time: <3 seconds
-  - [ ] Database query time: <100ms
-  - [ ] 99.9% uptime
-
-### âœ… User Experience Metrics
-
-- [ ] **Usability**
-  - [ ] Form completion rate: >95%
-  - [ ] Error recovery rate: >90%
-  - [ ] Mobile responsiveness: 100% compatible
-  - [ ] Accessibility score: >90 (Lighthouse)
-
----
-
-## ðŸ—“ï¸ Implementation Timeline
-
-### Week 1-2: Foundation & Setup âœ…
-
-- [x] Project structure
-- [x] Basic API implementation
-- [x] Authentication system
-- [x] Frontend integration
-
-### Week 3-4: Core Features âœ…
-
-- [x] CRUD operations
-- [x] API documentation
-- [x] Postman collection
-- [x] Basic testing
-
-### Week 5-6: Code Quality & Optimization ðŸ”„
-
-- [ ] Code refactoring
-- [ ] Security hardening
-- [ ] Performance optimization
-- [ ] UI/UX improvements
-
-### Week 7-8: Testing & Documentation ðŸ“‹
-
-- [ ] Comprehensive testing
-- [ ] Security audit
-- [ ] Performance testing
-- [ ] Documentation completion
-
-### Week 9+: Deployment & Maintenance ðŸ“‹
-
-- [ ] Production deployment
-- [ ] Monitoring setup
-- [ ] Continuous improvement
-- [ ] User feedback implementation
-
----
-
-## ðŸŽ¯ Priority Matrix
-
-### ðŸ”´ High Priority (Must Have)
-
-1. Security hardening (input validation, rate limiting)
-2. Error handling improvement
-3. Code refactoring untuk maintainability
-4. Basic testing implementation
-
-### ðŸŸ¡ Medium Priority (Should Have)
-
-1. Performance optimization
-2. UI/UX enhancements
-3. Comprehensive documentation
-4. Monitoring setup
-
-### ðŸŸ¢ Low Priority (Nice to Have)
-
-1. Advanced features (search, categories)
-2. Advanced testing (E2E, load testing)
-3. CI/CD pipeline
-4. Advanced monitoring
-
----
-
-## ðŸ“ Notes & Considerations
-
-### Development Best Practices
-
-- Follow REST API conventions
-- Implement proper error handling
-- Use environment-based configuration
-- Maintain code documentation
-- Follow security best practices
-
-### Code Review Checklist
-
-- Code readability dan maintainability
-- Security vulnerabilities
-- Performance implications
-- Test coverage
-- Documentation completeness
-
-### Deployment Considerations
-
-- Environment parity (dev/staging/prod)
-- Database migration strategy
-- Rollback procedures
-- Monitoring dan alerting
-- Security configurations
-
----
-
-**Last Updated**: 2024
-**Status**: Active Development
-**Next Review**: Weekly during development phase
+**Terakhir Diperbarui**: 13 September 2026
+**Status**: Aktif

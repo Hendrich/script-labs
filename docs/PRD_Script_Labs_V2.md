@@ -1,607 +1,302 @@
-﻿# Product Requirements Document (PRD) - Version 2.0
+# Product Requirements Document (PRD) - Versi 2.0
 
-## Script Labs Application - Enhanced Features
+## Script Labs App — API Latihan untuk QA
 
-### Document Information
+### Informasi Dokumen
 
-- **Version**: 2.0
-- **Date**: July 29, 2025
-- **Status**: Enhancement Phase
-- **Previous Version**: [PRD v1.0](./PRD-lab-Catalog-App.md)
-
----
-
-## 1. Executive Summary
-
-### 1.1 Product Overview
-
-Script Labs App V2 adalah peningkatan dari aplikasi manajemen katalog buku dengan penambahan fitur pencarian & filter buku, sistem forgot password yang aman, dan migrasi penuh ke Supabase sebagai backend database utama.
-
-### 1.2 Business Objectives
-
-- **Enhanced User Experience**: Pencarian dan filter buku yang powerful untuk koleksi besar
-- **Security Enhancement**: Sistem forgot password yang aman dengan email verification
-- **Infrastructure Modernization**: Full migration ke Supabase untuk scalability dan reliability
-- **Performance Improvement**: Query optimization dengan Supabase PostgreSQL
-
-### 1.3 Success Metrics V2
-
-- Search response time < 200ms untuk 1000+ labs
-- Password reset success rate > 95%
-- Zero downtime migration ke Supabase
-- User engagement increase 40% dengan enhanced search features
+- **Versi**: 2.0 (ditulis ulang agar sesuai dengan API yang benar-benar sudah dibangun)
+- **Tanggal**: 13 September 2026
+- **Status**: Aktif / Acuan Utama
+- **Tujuan**: Dokumen ini adalah **sumber kebenaran untuk perilaku yang diharapkan (expected behavior)**. Ditulis agar seorang QA bisa langsung menurunkan test case (positif, negatif, boundary, keamanan, performa) dari sini dan menjalankannya terhadap API yang sesungguhnya.
+- **Terkait**: [PRD V1.0](./PRD_Script_Labs_V1.md) (baseline historis), [Dokumentasi API](./API_DOCUMENTATION_V2.md), [Arsitektur Database](./DATABASE_ARCHITECTURE_V2.md)
 
 ---
 
-## 2. What's New in Version 2.0
+## 1. Ringkasan Eksekutif
 
-### 2.1 New Features Summary
+### 1.1 Gambaran Produk
 
-| Feature                | Priority | Status       | Impact |
-| ---------------------- | -------- | ------------ | ------ |
-| Search & Filter labs   | High     | ï¿½ Planned  | High   |
-| Forgot Password System | High     | ðŸ“‹ Planned | Medium |
-| Supabase Migration     | High     | ðŸ“‹ Planned | High   |
+Script Labs adalah REST API kecil (Node.js/Express + PostgreSQL) yang dibangun untuk memberi QA **target latihan yang realistis** — bukan produk SaaS produksi. Aplikasi ini menyediakan autentikasi user berbasis JWT dan resource "lab" (CRUD + pencarian), yang di-deploy di server sungguhan (Vultr VPS) sehingga berperilaku seperti environment nyata: ada latensi jaringan asli, rate limit asli, dan jalur error asli.
 
-### 2.2 Migration Rationale
+### 1.2 Kenapa aplikasi ini dibuat (Tujuan Bisnis)
 
-**From Local PostgreSQL to Supabase:**
+- Memberi pembelajar QA **API yang aman dan berisiko rendah** untuk berlatih seluruh jalur skill QA secara berurutan:
+  1. **Desain test case** — test case fungsional, negatif, boundary, dan keamanan yang diturunkan dari PRD ini.
+  2. **Automation testing** — menulis script test API (Postman/Newman, REST-assured, Playwright API testing, dll.) terhadap backend yang benar-benar sudah di-deploy.
+  3. **Performance testing** — menjalankan load/stress test (k6, JMeter, Artillery) terhadap VPS nyata dengan sumber daya terbatas, dan mengamati bottleneck yang benar-benar terjadi (rate limit, batas connection pool database, hashing password yang CPU-intensive).
+- Menyediakan codebase yang cukup sederhana untuk dibaca sepenuhnya, sehingga pembelajar bisa membandingkan "yang seharusnya" (PRD ini) vs "kenyataan" (API yang berjalan) sebagai latihan pelaporan defect.
 
-- **Scalability**: Auto-scaling database
-- **Authentication**: Built-in auth with email verification
-- **Real-time**: Real-time subscriptions capability
-- **Managed Service**: Reduced operational overhead
-- **Security**: Enterprise-grade security features
+### 1.3 Metrik Keberhasilan
 
----
-
-## 3. Enhanced Functional Requirements
-
-### 3.1 Search & Filter System
-
-| Feature ID | Feature Name           | Priority | Description                       |
-| ---------- | ---------------------- | -------- | --------------------------------- |
-| SEARCH-001 | Basic Text Search      | High     | Search labs by title and author   |
-| SEARCH-002 | Filter by Title/Author | High     | Filter labs by title or author    |
-| SEARCH-003 | Sort Options           | High     | Sort by title, author, date added |
-
-#### 3.1.1 Search API Specifications
-
-```javascript
-// GET /api/labs/search
-Query Parameters:
-- q: string (search query for title/author)
-- sort_by: enum (title|author|created_at)
-- sort_order: enum (asc|desc)
-- page: number (pagination)
-- limit: number (results per page, max 50)
-
-Response:
-{
-  "success": true,
-  "data": {
-    "labs": [...],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 10,
-      "total_results": 95,
-      "per_page": 10
-    },
-    "search_query": "javascript"
-    }
-  },
-  "performance": {
-    "query_time_ms": 45,
-    "results_count": 10
-  }
-}
-```
-
-### 3.2 Forgot Password System
-
-| Feature ID | Feature Name           | Priority | Description                               |
-| ---------- | ---------------------- | -------- | ----------------------------------------- |
-| FORGOT-001 | Password Reset Request | High     | User requests password reset via email    |
-| FORGOT-002 | Email Verification     | High     | Send secure reset link to user email      |
-| FORGOT-003 | Token Validation       | High     | Validate reset token and expiration       |
-| FORGOT-004 | Password Update        | High     | Secure password update with new hash      |
-| FORGOT-005 | Reset Notification     | Medium   | Email confirmation after successful reset |
-| FORGOT-006 | Rate Limiting          | High     | Prevent abuse with rate limiting          |
-
-#### 3.2.1 Forgot Password API Flow
-
-```javascript
-// 1. Request Password Reset
-POST /api/auth/forgot-password
-{
-  "email": "user@example.com"
-}
-
-// 2. Verify Reset Token
-GET /api/auth/reset-password/:token
-
-// 3. Set New Password
-POST /api/auth/reset-password
-{
-  "token": "secure_reset_token",
-  "new_password": "new_secure_password",
-  "confirm_password": "new_secure_password"
-}
-```
+- Pembelajar QA bisa menulis test suite lengkap (happy path + negatif + edge case) untuk setiap endpoint di dokumen ini tanpa perlu membaca source code.
+- Test suite otomatis (Postman/Newman atau berbasis kode) bisa dijalankan terhadap API yang sudah di-deploy tanpa setup manual selain mendaftarkan user test.
+- Script performance test bisa diarahkan ke API yang sudah di-deploy dan menghasilkan angka latensi/error-rate yang bermakna dan bisa direproduksi.
 
 ---
 
-## 4. Technical Architecture V2
+## 2. Ruang Lingkup
 
-### 4.1 Enhanced Architecture
+### 2.0 Repository Terkait
 
-```
-Frontend (Enhanced UI) â†” Backend API (Node.js/Express) â†” Supabase (PostgreSQL + Auth)
-                        â†•                               â†•
-                   JWT + Supabase Auth           Real-time Updates
-                        â†•                               â†•
-                   Email Service (Supabase)      File Storage (Future)
-```
+Proyek Script Labs terdiri dari **dua repository terpisah**:
 
-### 4.2 Technology Stack Updates
+| Bagian | Repository | Deployment |
+|--------|-----------|------------|
+| Backend (API — dijelaskan di PRD ini) | [Hendrich/script-labs](https://github.com/Hendrich/script-labs) | Vultr VPS |
+| Frontend (UI) | [Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app) | Vercel, domain [labs.hendri.me](https://labs.hendri.me) (DNS via Cloudflare) |
 
-**Added/Updated:**
+PRD ini **hanya mencakup backend/API**. Frontend memang ada dan sudah di-deploy — bukan tidak ada — tapi requirement dan test case UI-nya berada di luar cakupan dokumen ini dan sebaiknya dikelola di repository frontend tersebut. Kalau kamu perlu latihan test case berbasis UI (form, tombol, tampilan), gunakan repo/site frontend itu sebagai acuan, bukan dokumen ini.
 
-- **Database**: Supabase PostgreSQL (replacing local PostgreSQL)
-- **Authentication**: Supabase Auth + JWT hybrid approach
-- **Email Service**: Supabase built-in email (or SendGrid integration)
-- **Search**: PostgreSQL full-text search with ts_vector
-- **Real-time**: Supabase real-time subscriptions (future feature)
+### 2.1 Termasuk dalam Ruang Lingkup
 
-**Maintained:**
+- Registrasi user, login, logout, verifikasi sesi/token (JWT, stateless).
+- CRUD + pencarian untuk satu jenis resource: **"lab"** (`title`, `description`, dimiliki oleh satu user).
+- Rate limiting pada endpoint autentikasi.
+- Validasi input dan response error yang konsisten.
 
-- **Frontend**: HTML5, CSS3, Enhanced JavaScript
-- **Backend**: Node.js, Express.js (enhanced middleware)
-- **Security**: bcryptjs, CORS, Helmet
-- **Testing**: Jest with enhanced coverage
+### 2.2 Di Luar Ruang Lingkup (secara eksplisit BELUM diimplementasikan pada API ini — jangan buat test case API dengan asumsi ini ada)
 
-### 4.3 Database Schema V2
+- Test case berbasis UI/tampilan — itu ranah repository frontend ([script-labs-app](https://github.com/Hendrich/script-labs-app)), bukan API ini.
+- Tidak ada fitur lupa password / reset password via email.
+- Tidak ada autentikasi pihak ketiga (Google/Supabase/OAuth) — autentikasi murni email+password lokal.
+- Tidak ada field "sort_by" / "sort_order" / kategori / rating / ISBN pada lab — sebuah lab hanya punya `title` dan `description`.
+- Tidak ada operasi bulk, tidak ada endpoint admin/metrics, tidak ada endpoint statistik user.
 
-```sql
--- Enhanced labs table
-CREATE TABLE public.labs (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title VARCHAR(500) NOT NULL,
-  author VARCHAR(300) NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Indexes for performance
-CREATE INDEX idx_labs_user_id ON public.labs(user_id);
-CREATE INDEX idx_labs_title ON public.labs(title);
-CREATE INDEX idx_labs_author ON public.labs(author);
-
--- Password reset tokens table
-CREATE TABLE public.password_reset_tokens (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  used BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_password_reset_tokens_token ON public.password_reset_tokens(token);
-CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens(user_id);
-CREATE INDEX idx_password_reset_tokens_token ON public.password_reset_tokens(token);
-CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens(user_id);
-```
+> Catatan untuk QA: draf-draf awal dokumen ini (dan dokumen lain di repository) pernah menyebutkan Supabase, lupa password, rating/ISBN buku, dan hal lain. Itu semua adalah draf aspirasional yang **tidak pernah diimplementasikan**. Bagian ini sengaja ditulis supaya QA tidak membuat test case untuk fitur yang tidak ada di API sesungguhnya.
 
 ---
 
-## 5. API Specifications V2
+## 3. Kebutuhan Fungsional (Functional Requirements)
 
-### 5.1 Enhanced lab Endpoints
+Setiap requirement di bawah menyertakan aturan level-field yang dibutuhkan untuk merancang equivalence class dan boundary value.
 
-```javascript
-// Search labs by title/author
-GET /api/labs/search?q={query}&sort_by={field}&page={num}
+### 3.1 Autentikasi
 
-// Standard CRUD operations (existing)
-GET /api/labs
-POST /api/labs
-PUT /api/labs/:id
-DELETE /api/labs/:id
+| ID | Requirement | Prioritas |
+|----|-------------|-----------|
+| AUTH-001 | Pengunjung dapat mendaftar dengan `email` unik dan `password`. | Tinggi |
+| AUTH-002 | User terdaftar dapat login dengan `email` + `password` dan menerima JWT. | Tinggi |
+| AUTH-003 | Setiap endpoint terproteksi harus menolak request tanpa header `Authorization: Bearer <token>` yang valid. | Tinggi |
+| AUTH-004 | Password tidak boleh pernah disimpan atau dikembalikan dalam bentuk plaintext. | Tinggi |
+| AUTH-005 | JWT harus punya masa kedaluwarsa (default: 24 jam) dan ditolak setelah kedaluwarsa. | Sedang |
+| AUTH-006 | Client dapat memanggil endpoint "logout"; karena auth bersifat stateless, endpoint ini cukup menandakan sukses — client bertanggung jawab menghapus token-nya sendiri. | Rendah |
+| AUTH-007 | User yang sudah login dapat mengambil profilnya sendiri (`/me`) dan memverifikasi token miliknya sendiri (`/verify-token`). | Sedang |
+| AUTH-008 | Percobaan login/registrasi yang berulang gagal dari IP yang sama harus dibatasi (throttle). | Tinggi |
 
-// Update lab (same as V1)
-PUT /api/labs/:id
-{
-  "title": "lab Title",
-  "author": "Author Name"
-  "category": "Technical",
-  "publication_year": 2024,
-  "isbn": "978-1234567890",
-  "rating": 5,
-  "reading_status": "read",
-  "notes": "Excellent lab about...",
-  "cover_url": "https://example.com/cover.jpg"
-}
+#### 3.1.1 Aturan Field
 
-// Bulk operations (future)
-POST /api/labs/bulk
-{
-  "action": "update_status",
-  "lab_ids": ["uuid1", "uuid2"],
-  "data": { "reading_status": "read" }
-}
-```
+| Field | Aturan |
+|-------|--------|
+| `email` | Wajib. Harus format email yang valid secara sintaksis. Pencocokan tidak case-sensitive (mis. `A@B.com` dan `a@b.com` dianggap akun yang sama). |
+| `password` | Wajib. Minimal 6 karakter, maksimal 128 karakter. Tidak ada syarat kompleksitas (tidak wajib huruf besar/angka/simbol). |
 
-```javascript
-// New endpoint on Enhance V2
-// GET /api/labs/search
-Query Parameters:
-- q: string (search query for title/author)
-- page: number (pagination, default: 1)
-- limit: number (results per page, default: 10, max: 100)
+#### 3.1.2 Kebutuhan per Endpoint
 
-Response:
-{
-  "success": true,
-  "data": [
-    { "id": 14, "title": "Atomic Habits", "author": "James Clear", "user_id": "..." }
-  ],
-  "pagination": { "page": 1, "limit": 10, "total": 1, "totalPages": 1 },
-  "search_query": "atomic",
-  "timestamp": "2025-07-31T10:00:00.000Z"
-}
-```
+**`POST /api/auth/register`**
 
-### 5.2 Password Reset Endpoints
+- **Diberikan** `email` yang valid dan belum terdaftar, serta `password` 6-128 karakter
+  **Ketika** client mengirim registrasi
+  **Maka** API mengembalikan **201 Created** berisi JWT dan data user yang dibuat: `id`, `email`, `role` (default `"user"`), `status` (default `"active"`). Response tidak boleh pernah menyertakan password atau hash-nya.
+- **Diberikan** `email` yang sudah terdaftar (perbandingan tidak case-sensitive)
+  **Ketika** client mengirim registrasi
+  **Maka** API mengembalikan **409 Conflict** dengan kode error `EMAIL_EXISTS`, dan tidak ada akun baru yang dibuat.
+- **Diberikan** `email` yang kosong/tidak valid, atau `password` kurang dari 6 atau lebih dari 128 karakter
+  **Ketika** client mengirim registrasi
+  **Maka** API mengembalikan **400 Bad Request** yang menjelaskan field mana yang gagal validasi, dan tidak ada akun yang dibuat.
+- **Diberikan** lebih dari 5 percobaan registrasi dari IP yang sama dalam 15 menit
+  **Ketika** client mengirim registrasi lagi
+  **Maka** API mengembalikan **429 Too Many Requests**.
 
-```javascript
-// 1. Initiate password reset
-POST /api/auth/forgot-password
-{
-  "email": "user@example.com"
-}
-Response: {
-  "success": true,
-  "message": "Password reset email sent if account exists",
-  "rate_limit": {
-    "remaining_attempts": 2,
-    "reset_time": "2025-07-29T10:00:00Z"
-  }
-}
+**`POST /api/auth/login`**
 
-// 2. Validate reset token
-GET /api/auth/reset-password/:token
-Response: {
-  "success": true,
-  "data": {
-    "token_valid": true,
-    "expires_at": "2025-07-29T09:00:00Z",
-    "email": "u***@example.com"
-  }
-}
+- **Diberikan** `email` + `password` yang benar untuk akun yang aktif
+  **Ketika** client login
+  **Maka** API mengembalikan **200 OK** berisi JWT dan data user: `id`, `email`, `role`, `status`.
+- **Diberikan** `email` yang tidak terdaftar, ATAU `email` benar dengan `password` salah
+  **Ketika** client login
+  **Maka** API mengembalikan **401 Unauthorized** dengan pesan generik yang **sama persis** untuk kedua kasus (mis. "Invalid email or password") — API tidak boleh pernah membocorkan apakah email tersebut terdaftar (anti user-enumeration).
+- **Diberikan** `email` + `password` benar untuk akun yang `status`-nya `"locked"`
+  **Ketika** client login
+  **Maka** API mengembalikan **403 Forbidden**, bukan 401.
+- **Diberikan** `email` atau `password` yang kosong/tidak valid
+  **Ketika** client login
+  **Maka** API mengembalikan **400 Bad Request**.
+- **Diberikan** lebih dari 5 percobaan login dari IP yang sama dalam 15 menit
+  **Ketika** client login lagi
+  **Maka** API mengembalikan **429 Too Many Requests**, terlepas dari benar-tidaknya kredensial pada percobaan ke-6 tersebut.
 
-// 3. Complete password reset
-POST /api/auth/reset-password
-{
-  "token": "secure_reset_token",
-  "new_password": "new_secure_password"
-}
-Response: {
-  "success": true,
-  "message": "Password successfully updated"
-}
-```
+**`POST /api/auth/logout`**
 
----
+- **Diberikan** request apa pun, dengan atau tanpa token
+  **Ketika** client memanggil logout
+  **Maka** API mengembalikan **200 OK** yang mengonfirmasi logout. (JWT stateless — server tidak menyimpan sesi untuk di-invalidate; endpoint ini murni sebagai konfirmasi sisi client.)
 
-## 6. Migration Strategy
+**`GET /api/auth/me`**
 
-### 6.1 Database Migration Plan
+- **Diberikan** token yang valid dan belum kedaluwarsa
+  **Ketika** client meminta profilnya
+  **Maka** API mengembalikan **200 OK** berisi `id`, `email`, `role`, `status`, `created_at` user tersebut.
+- **Diberikan** token yang kosong, tidak valid, atau sudah kedaluwarsa
+  **Ketika** client meminta profilnya
+  **Maka** API mengembalikan **401 Unauthorized**.
 
-#### Phase 1: Supabase Setup (Week 1)
+**`POST /api/auth/verify-token`**
 
-```sql
--- 1. Create Supabase project
--- 2. Set up authentication
--- 3. Create enhanced tables
--- 4. Set up Row Level Security (RLS)
+- **Diberikan** token yang valid dan belum kedaluwarsa
+  **Ketika** client memverifikasinya
+  **Maka** API mengembalikan **200 OK** dengan `valid: true`, `user_id`, `email`, dan waktu kedaluwarsa token.
+- **Diberikan** token yang kosong, tidak valid, atau sudah kedaluwarsa
+  **Ketika** client memverifikasinya
+  **Maka** API mengembalikan **401 Unauthorized**.
 
--- RLS Policies
-ALTER TABLE public.labs ENABLE ROW LEVEL SECURITY;
+### 3.2 Manajemen Lab (CRUD)
 
-CREATE POLICY "Users can view their own labs" ON public.labs
-  FOR SELECT USING (auth.uid() = user_id);
+Semua endpoint di bawah `/api/labs` membutuhkan header `Authorization: Bearer <token>` yang valid. Seorang user hanya bisa melihat dan mengubah lab **miliknya sendiri**.
 
-CREATE POLICY "Users can insert their own labs" ON public.labs
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+| ID | Requirement | Prioritas |
+|----|-------------|-----------|
+| LAB-001 | User yang login dapat melihat daftar lab miliknya, dengan pagination. | Tinggi |
+| LAB-002 | User yang login dapat mengambil satu lab miliknya berdasarkan ID. | Tinggi |
+| LAB-003 | User yang login dapat membuat lab baru dengan `title` dan `description`. | Tinggi |
+| LAB-004 | User yang login dapat mengubah `title` dan/atau `description` dari lab miliknya. | Tinggi |
+| LAB-005 | User yang login dapat menghapus lab miliknya. | Tinggi |
+| LAB-006 | User yang login dapat mencari lab miliknya berdasarkan kata kunci pada `title` atau `description`, dengan pagination. | Sedang |
+| LAB-007 | Seorang user tidak boleh pernah bisa melihat, mengubah, atau menghapus lab milik user lain, sekalipun dengan menebak ID numeriknya. | Tinggi |
+| LAB-008 | Membuat lab dengan `title` dan `description` yang identik dengan lab yang sudah ada (untuk user yang sama) harus ditolak sebagai duplikat. | Sedang |
 
-CREATE POLICY "Users can update their own labs" ON public.labs
-  FOR UPDATE USING (auth.uid() = user_id);
+#### 3.2.1 Aturan Field
 
-CREATE POLICY "Users can delete their own labs" ON public.labs
-  FOR DELETE USING (auth.uid() = user_id);
-```
+| Field | Aturan |
+|-------|--------|
+| `title` | Wajib saat membuat lab. 1-255 karakter (setelah di-trim). |
+| `description` | Wajib saat membuat lab. 1-1000 karakter (setelah di-trim). |
+| `id` (path param) | Harus berupa bilangan bulat positif. |
+| `page` (query param) | Bilangan bulat positif, default `1`. |
+| `limit` (query param) | Bilangan bulat positif, default `10`, maksimum `100`. |
 
-#### Phase 2: Data Migration (Week 2)
+#### 3.2.2 Kebutuhan per Endpoint
 
-```javascript
-// Migration script
-const migrationScript = `
--- Export existing data
-COPY (
-  SELECT 
-    gen_random_uuid() as id,
-    title,
-    author,
-    user_id,
-    created_at,
-    updated_at
-  FROM old_books_table
-) TO '/tmp/books_export.csv' WITH CSV HEADER;
+**`GET /api/labs`**
 
--- Import to Supabase
--- (Use Supabase Dashboard or API)
-`;
-```
+- **Diberikan** user yang login dengan N lab
+  **Ketika** memanggil endpoint ini tanpa query param
+  **Maka** API mengembalikan **200 OK** berisi lab miliknya (default 10 per halaman), diurutkan dari yang terbaru, plus metadata pagination (`page`, `limit`, `total`, `totalPages`).
+- **Diberikan** query param opsional `search`
+  **Ketika** diisi
+  **Maka** hasil difilter ke lab yang `title` atau `description`-nya mengandung teks pencarian (tidak case-sensitive).
+- **Diberikan** nilai `page` atau `limit` yang bukan bilangan bulat positif yang valid (mis. teks, negatif, nol, desimal)
+  **Ketika** client memanggil endpoint ini
+  **Maka** API harus mengembalikan **400 Bad Request** dengan pesan validasi yang jelas — tidak boleh 500, dan tidak boleh membocorkan pesan error database mentah.
 
-#### Phase 3: API Updates (Week 3)
+**`GET /api/labs/search`**
 
-- Update database connection to Supabase
-- Implement new search endpoints
-- Add forgot password functionality
-- Enhanced error handling
+- Kontrak sama dengan `GET /api/labs`, tapi query param bernama `q`, bukan `search`, dan response menyertakan echo dari kata kunci pencarian (`search_query`).
+- **Diberikan** `q` yang kosong atau tidak diisi
+  **Ketika** client mencari
+  **Maka** API mengembalikan semua lab milik user (dengan pagination), setara dengan `GET /api/labs`.
+- Aturan validasi sama seperti di atas: `page`/`limit` yang tidak valid harus mengembalikan **400**, tidak boleh 500 atau error database mentah.
 
-### 6.2 Rollback Strategy
+**`GET /api/labs/:id`**
 
-- **Database**: Keep old PostgreSQL running for 2 weeks
-- **Code**: Feature flags for new functionality
-- **Data**: Daily backups during migration period
-- **Testing**: Parallel testing on both systems
+- **Diberikan** `id` yang ada dan milik pemanggil
+  **Ketika** client memintanya
+  **Maka** API mengembalikan **200 OK** berisi lab tersebut.
+- **Diberikan** `id` yang tidak ada, atau ada tapi milik user lain
+  **Ketika** client memintanya
+  **Maka** API mengembalikan **404 Not Found** — response harus identik untuk kedua kasus (jangan bocorkan apakah ID tersebut ada tapi milik orang lain).
+- **Diberikan** `id` yang bukan bilangan bulat positif (mis. `abc`, `-1`, `1.5`)
+  **Ketika** client memintanya
+  **Maka** API mengembalikan **400 Bad Request**.
 
----
+**`POST /api/labs`**
 
-## 7. Enhanced Security Requirements
+- **Diberikan** `title` (1-255 karakter) dan `description` (1-1000 karakter) yang valid
+  **Ketika** client membuat lab
+  **Maka** API mengembalikan **201 Created** berisi lab baru, lengkap dengan `id`, `created_at`, `updated_at` yang dihasilkan.
+- **Diberikan** pasangan `title`+`description` yang identik dengan lab yang sudah dimiliki user yang sama
+  **Ketika** client mencoba membuatnya lagi
+  **Maka** API mengembalikan **409 Conflict**.
+- **Diberikan** `title` kosong, `description` kosong, atau salah satunya di luar batas panjang (kosong setelah trim, atau melebihi maksimum)
+  **Ketika** client membuat lab
+  **Maka** API mengembalikan **400 Bad Request** yang menjelaskan field mana yang tidak valid.
 
-### 7.1 Authentication Security
+**`PUT /api/labs/:id`**
 
-```javascript
-// Enhanced JWT with Supabase
-const jwtConfig = {
-  // Primary: Supabase JWT
-  supabase: {
-    jwt_secret: process.env.SUPABASE_JWT_SECRET,
-    algorithm: "HS256",
-    expiresIn: "1h",
-  },
-  // Fallback: Custom JWT
-  custom: {
-    jwt_secret: process.env.JWT_SECRET,
-    algorithm: "HS256",
-    expiresIn: "24h",
-  },
-};
-```
+- **Diberikan** `id` lab yang dimiliki dan ada, plus minimal satu dari `title`/`description` di body
+  **Ketika** client mengubahnya
+  **Maka** API mengembalikan **200 OK** berisi lab yang sudah diperbarui, dan `updated_at` berubah.
+- **Diberikan** body kosong (tidak ada field untuk diubah)
+  **Ketika** client mencoba mengubah
+  **Maka** API mengembalikan **400 Bad Request**.
+- **Diberikan** `id` yang tidak ada atau bukan milik pemanggil
+  **Ketika** client mencoba mengubah
+  **Maka** API mengembalikan **404 Not Found**.
 
-### 7.2 Password Reset Security
+**`DELETE /api/labs/:id`**
 
-- **Token Expiration**: 1 hour maximum
-- **Single Use**: Tokens become invalid after use
-- **Rate Limiting**: 3 attempts per hour per email
-- **Secure Generation**: Crypto-random tokens (32 bytes)
-- **Email Verification**: Confirm email ownership
-
-### 7.3 Search Security
-
-- **Input Sanitization**: Prevent SQL injection in search queries
-- **Query Limits**: Maximum 100 results per request
-- **Rate Limiting**: 100 searches per minute per user
-- **Permission Check**: Users can only search their own labs
+- **Diberikan** `id` lab yang dimiliki dan ada
+  **Ketika** client menghapusnya
+  **Maka** API mengembalikan **200 OK** yang mengonfirmasi penghapusan, dan `GET` berikutnya pada `id` tersebut mengembalikan 404.
+- **Diberikan** `id` yang tidak ada atau bukan milik pemanggil
+  **Ketika** client mencoba menghapusnya
+  **Maka** API mengembalikan **404 Not Found**.
 
 ---
 
-## 8. Performance Requirements V2
+## 4. Kebutuhan Non-Fungsional
 
-### 8.1 Search Performance
+### 4.1 Keamanan
 
-| Metric               | Target  | Current | Improvement           |
-| -------------------- | ------- | ------- | --------------------- |
-| Search Response Time | < 300ms | N/A     | New Feature           |
-| Results per Page     | 10-50   | N/A     | Configurable          |
-| Concurrent Searches  | 100/min | N/A     | Load Testing Required |
+| ID | Requirement |
+|----|-------------|
+| SEC-001 | Password harus di-hash (tidak boleh pernah disimpan atau di-log dalam bentuk plaintext). |
+| SEC-002 | Semua request yang mengubah state (`POST`/`PUT`/`DELETE`) harus ditolak jika header `Origin`/`Referer`-nya tidak cocok dengan daftar origin yang diizinkan. |
+| SEC-003 | Endpoint autentikasi harus membatasi (rate-limit) berdasarkan IP untuk menahan brute-force dan credential-stuffing. |
+| SEC-004 | Response error di production tidak boleh pernah membocorkan stack trace, pesan error database mentah, atau path file internal. |
+| SEC-005 | Seorang user tidak boleh pernah bisa mengakses atau mengubah data user lain lewat endpoint apa pun. |
 
-### 8.2 Database Performance
+### 4.2 Performa
 
-```sql
--- Performance monitoring queries
-SELECT COUNT(*) FROM labs WHERE user_id = $1;
+| ID | Requirement | Target |
+|----|-------------|--------|
+| PERF-001 | Waktu respons `GET /api/labs` / `GET /api/labs/search` dalam kondisi normal | < 500 ms (p95) |
+| PERF-002 | Waktu respons `POST /api/auth/login` (bcrypt sengaja CPU-intensive; endpoint ini diperkirakan paling lambat) | < 1000 ms (p95) |
+| PERF-003 | API harus degradasi secara graceful (response error yang jelas, bukan hang atau crash) ketika rate limit atau connection pool database yang dikonfigurasi terlampaui — inilah yang seharusnya diuji oleh performance/load testing pada aplikasi ini. |
 
--- Search query performance
-EXPLAIN ANALYZE
-SELECT * FROM labs
-WHERE user_id = $1 AND (title ILIKE $2 OR author ILIKE $3);
-```
+### 4.3 Reliabilitas & Kontrak Error
 
----
-
-## 9. Testing Strategy V2
-
-### 9.1 Enhanced Test Coverage
-
-```javascript
-// Search functionality tests
-describe("lab Search API", () => {
-  test("should return labs matching search query", async () => {
-    const response = await request(app)
-      .get("/api/labs/search?q=javascript")
-      .set("Authorization", `Bearer ${validToken}`)
-      .expect(200);
-
-    expect(response.body.data.labs).toHaveLength(5);
-    expect(response.body.performance.query_time_ms).toBeLessThan(200);
-  });
-
-  test("should handle complex filters", async () => {
-    const response = await request(app)
-      .get("/api/labs/search?category=Technical&year_from=2020&sort_by=rating")
-      .set("Authorization", `Bearer ${validToken}`)
-      .expect(200);
-
-    expect(response.body.data.filters_applied.category).toBe("Technical");
-  });
-});
-
-// Password reset tests
-describe("Password Reset Flow", () => {
-  test("should send reset email for valid user", async () => {
-    const response = await request(app)
-      .post("/api/auth/forgot-password")
-      .send({ email: "test@example.com" })
-      .expect(200);
-
-    expect(emailService.sendEmail).toHaveBeenCalled();
-  });
-
-  test("should validate reset token correctly", async () => {
-    const token = await generateResetToken("user_id");
-    const response = await request(app)
-      .get(`/api/auth/reset-password/${token}`)
-      .expect(200);
-
-    expect(response.body.data.token_valid).toBe(true);
-  });
-});
-```
-
-### 9.2 Migration Testing
-
-```javascript
-// Migration test suite
-describe("Database Migration", () => {
-  test("should migrate all labs data correctly", async () => {
-    const oldCount = await getOldDatabaseBookCount();
-    await runMigration();
-    const newCount = await getSupabaseBookCount();
-
-    expect(newCount).toBe(oldCount);
-  });
-
-  test("should maintain data integrity after migration", async () => {
-    const sampleBooks = await getRandomBooksFromOldDB(10);
-    await runMigration();
-
-    for (const lab of sampleBooks) {
-      const migratedBook = await getBookFromSupabase(lab.id);
-      expect(migratedBook.title).toBe(lab.title);
-      expect(migratedBook.author).toBe(lab.author);
-    }
-  });
-});
-```
+| ID | Requirement |
+|----|-------------|
+| REL-001 | Setiap response error harus menyertakan `message` yang bisa dibaca manusia. |
+| REL-002 | Error validasi harus mengembalikan `400`, error autentikasi `401`/`403`, tidak-ditemukan `404`, konflik `409`, rate-limit `429`, dan kegagalan server tak terduga `500` — status code harus digunakan secara konsisten di semua endpoint. |
+| REL-003 | Input yang salah bentuk atau tak terduga tidak boleh pernah membuat server crash atau mengembalikan `500` yang tidak tertangani padahal seharusnya `400` — ini aturan paling penting untuk desain test case negatif terhadap API ini. |
 
 ---
 
-## 10. Implementation Timeline
+## 5. Panduan Desain Test Case untuk QA
 
-### Phase 1: Foundation Enhancement (Week 1-2)
+PRD ini sengaja ditulis agar setiap requirement per endpoint di atas bisa langsung dipetakan menjadi Given/When/Then dan menjadi satu atau lebih test case. Cakupan yang disarankan per endpoint:
 
-- [x] âœ… Project structure analysis
-- [ ] ðŸ”„ Supabase project setup
-- [ ] ðŸ”„ Enhanced database schema
-- [ ] ðŸ“‹ Authentication system update
+1. **Happy path** — input valid, verifikasi status code + bentuk response.
+2. **Boundary value** — untuk setiap aturan panjang/angka di atas (mis. password persis 6, 5, 128, 129 karakter; page = 0, 1, negatif, bukan angka).
+3. **Negatif/keamanan** — kredensial salah, akun terkunci, mengakses resource user lain lewat ID, token kosong/kedaluwarsa/tidak valid, body JSON yang salah bentuk.
+4. **Rate limiting** — melebihi batas 5 request/15 menit pada `/register` dan `/login`.
+5. **Konsistensi kontrak** — bandingkan bentuk response/status code aktual dengan yang ditentukan di dokumen ini; ketidaksesuaian apa pun adalah defect yang harus dilaporkan.
 
-### Phase 2: Search & Filter (Week 3-4)
-
-- [ ] ðŸ“‹ Basic search implementation
-- [ ] ðŸ“‹ Search API endpoints
-- [ ] ðŸ“‹ Frontend search UI
-
-### Phase 3: Forgot Password (Week 5-6)
-
-- [ ] ðŸ“‹ Email service integration
-- [ ] ðŸ“‹ Password reset flow
-- [ ] ðŸ“‹ Security implementation
-- [ ] ðŸ“‹ Frontend reset forms
-
-### Phase 4: Migration & Testing (Week 7-8)
-
-- [ ] ðŸ“‹ Data migration scripts
-- [ ] ðŸ“‹ System testing
-- [ ] ðŸ“‹ Security audit
+Struktur ini juga yang sebaiknya dipakai untuk mengorganisir automation suite (koleksi Postman/Newman, atau test API berbasis kode), dan menjadi acuan performance test script untuk skenario beban yang realistis (mis. traffic berkelanjutan pada `GET /api/labs`, traffic burst pada `POST /api/auth/login` untuk mengamati perilaku rate-limiting).
 
 ---
 
-## 11. Success Criteria V2
+## 6. Kriteria Keberhasilan
 
-### 11.1 MVP V2 Requirements
-
-- [ ] Search labs by title/author with < 300ms response time
-- [ ] Forgot password with email verification
-- [ ] 100% data migration success to Supabase
-- [ ] Zero downtime deployment
-
-### 11.2 Performance Benchmarks
-
-```javascript
-// Performance test targets
-const performanceTargets = {
-  search: {
-    basic_search: "< 300ms",
-    pagination: "< 100ms",
-  },
-  auth: {
-    password_reset_request: "< 1s",
-    token_validation: "< 100ms",
-    password_update: "< 500ms",
-  },
-  database: {
-    migration_success: "100%",
-  },
-};
-```
+- [x] Registrasi, login, logout, `/me`, `/verify-token` sudah diimplementasikan dan sesuai Bagian 3.1.
+- [x] CRUD + pencarian lab sudah diimplementasikan dan sesuai Bagian 3.2.
+- [x] Rate limiting aktif pada `/register` dan `/login`.
+- [ ] Semua requirement di Bagian 3 sudah diverifikasi oleh automated test suite (deliverable QA).
+- [ ] Baseline performa untuk target di Bagian 4.2 sudah ditetapkan (deliverable QA).
 
 ---
 
-## 12. Risk Assessment V2
-
-### 12.1 Technical Risks
-
-| Risk                  | Impact   | Probability | Mitigation                                      |
-| --------------------- | -------- | ----------- | ----------------------------------------------- |
-| Migration Data Loss   | Critical | Low         | Comprehensive backup strategy, parallel testing |
-| Search Performance    | High     | Medium      | Database indexing, query optimization           |
-| Email Delivery Issues | Medium   | Medium      | Multiple email providers, monitoring            |
-| Supabase Limitations  | High     | Low         | Thorough testing, fallback plans                |
-
-### 12.2 Migration Risks
-
-| Risk                    | Impact   | Probability | Mitigation                              |
-| ----------------------- | -------- | ----------- | --------------------------------------- |
-| User Data Corruption    | Critical | Low         | Staged migration, rollback procedures   |
-| Service Downtime        | High     | Medium      | Blue-green deployment, feature flags    |
-| Authentication Breaking | High     | Low         | Hybrid auth approach, gradual migration |
-| Performance Regression  | Medium   | Medium      | Load testing, performance monitoring    |
-
----
-
-## 13. Conclusion
-
-Script Labs V2 focuses on three core enhancements: search functionality, password recovery, and Supabase migration. This streamlined approach ensures reliable implementation while maintaining system stability.
-
-### Key Deliverables:
-
-1. **Search System** - Basic search by title and author
-2. **Password Recovery** - Email-based password reset with security measures
-3. **Supabase Migration** - Complete transition to managed database service
-
-### Next Steps:
-
-1. Review and approve this PRD
-2. Set up development environment with Supabase
-3. Begin implementation following the phased approach
-
----
-
-**Document Status**: Ready for Development  
-**Approval Required**: Technical Lead, Product Owner  
-**Next Review**: Weekly during development phase
+**Status Dokumen**: Aktif / Acuan Utama
+**Terakhir Diperbarui**: 13 September 2026
+**Pemilik**: Hendri Christianto

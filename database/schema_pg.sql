@@ -1,4 +1,5 @@
 ﻿-- PostgreSQL version of script_labs
+-- Kept in sync with backend/routes/authRoutes.js and backend/routes/labRoutes.js
 
 -- Drop tables if exists (untuk keperluan reimport)
 DROP TABLE IF EXISTS labs;
@@ -7,35 +8,25 @@ DROP TABLE IF EXISTS users;
 -- Tabel Users
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  username VARCHAR(50) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'user',
+  status VARCHAR(50) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Tabel Labs
 CREATE TABLE labs (
   id SERIAL PRIMARY KEY,
-  title VARCHAR(100),
+  title VARCHAR(255) NOT NULL,
   description TEXT,
   user_id INTEGER,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
   CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Data untuk tabel users
-INSERT INTO users (id, username, password) VALUES
-  (4, 'hendri', '$2b$10$3iv/ey.C5bTjC0um0zeqB.dZ/TWGpS1Qstz9QGZwG74IpVVgaIGC2'),
-  (5, 'wahyu', '$2b$10$F8geU7ryMcNjrYAKFsyOh.ZrFwtXuITdCSn4OtEQ842qnFsGa2et.'),
-  (6, 'budi', '$2b$10$DAS63YHwl3ASaFNAph2XAOp0nykrzn4RPFAXrWJD08Ye0//YOlH9K'),
-  (8, 'santi', '$2b$10$puxe3deN8PxKtFhrVtaiRuTVQH4b5EyPXHQCD2wt3y8cAP4G2mZX.');
-
--- Data untuk tabel labs
-INSERT INTO labs (id, title, description, user_id) VALUES
-  (14, 'lab menari', 'Lab untuk belajar menari dengan berbagai gaya', 4),
-  (15, 'lab mewarnai', 'Lab kreatif untuk mewarnai dan melukis', 4),
-  (17, 'bahaso', 'Lab pembelajaran bahasa Indonesia', 4),
-  (18, 'lab gambar', 'Lab untuk belajar menggambar dan sketsa', 4);
-
--- Reset sequence (karena id manual dimasukkan)
-SELECT setval('users_id_seq', 8, true);
-SELECT setval('labs_id_seq', 18, true);
-
+-- Catatan: seed user dibuat lewat POST /api/auth/register (bukan INSERT manual)
+-- supaya password_hash-nya dihasilkan oleh bcrypt sesuai yang dipakai di authRoutes.js.
 

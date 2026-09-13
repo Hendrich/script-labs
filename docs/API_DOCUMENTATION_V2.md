@@ -1,1021 +1,427 @@
-﻿# ðŸš€ Script Labs App - API Documentation V2.0
+# 🚀 Script Labs App - Dokumentasi API V2.0
 
-## ðŸ“‹ Document Information
+## 📋 Informasi Dokumen
 
-- **Version**: 2.0 (Security hardening applied in patch release 2.1.0 – see `CHANGELOG_V2.1.md`)
-- **Date**: July 29, 2025
-- **Status**: API Specification
-- **Related**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Implementation Architecture](./IMPLEMENTATION_ARCHITECTURE.md)
+- **Versi**: 2.0 (ditulis ulang agar sesuai dengan API yang benar-benar diimplementasikan — lihat `backend/routes/*.js`)
+- **Tanggal**: 13 September 2026
+- **Status**: Aktif / Acuan Utama
+- **Terkait**: [PRD V2.0](./PRD_Script_Labs_V2.md), [Arsitektur Database](./DATABASE_ARCHITECTURE_V2.md)
 
----
-
-## ðŸŽ¯ API Overview
-
-Script Labs V2 RESTful API provides comprehensive endpoints for lab management, enhanced search capabilities, user authentication, and password recovery with full Supabase integration.
-
-### **Base URL**
-
-**Production**: `https://script-labs-app.onrender.com/api`
-**Staging**: `https://staging-script-labs.onrender.com/api`
-
-### **API Characteristics**
-
-**Environment**: `Script-Labs-Environment.postman_environment.json`
-
-- **Authentication**: JWT + Supabase Auth
-- **Rate Limiting**: Implemented per endpoint
-- **Versioning**: Via header or URL path
-- **CORS**: Enabled for frontend domains
+> Dokumen ini hanya mendaftar endpoint yang **benar-benar ada di codebase**. Draf sebelumnya menyebut lupa password, auth Supabase, rating/ISBN buku, operasi bulk, dan endpoint admin/metrics — semua itu tidak ada. Jangan membangun automation atau test case terhadap fitur-fitur tersebut.
 
 ---
 
-## ðŸ” Authentication
+## 🎯 Gambaran API
 
-### **Authentication Flow**
+Script Labs adalah REST API stateless. Backend (repository ini) **tidak menyajikan frontend** — tapi frontend-nya tetap ada, di repository terpisah [Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app), di-deploy di Vercel dengan domain [labs.hendri.me](https://labs.hendri.me). Dokumen ini hanya membahas API-nya, ditujukan sebagai target latihan untuk automation dan performance testing QA.
+
+### Base URL
+
+Sesuaikan per environment (dev lokal, atau instance Vultr yang sudah di-deploy):
+
+```
+http://localhost:3000/api          (dev lokal)
+https://<domain-kamu>/api          (deployed)
+```
+
+### Karakteristik API
+
+- **Autentikasi**: JWT saja (`Authorization: Bearer <token>`), tidak ada auth pihak ketiga
+- **Content-Type**: `application/json` untuk semua body request/response
+- **Rate Limiting**: hanya di `/api/auth/register` dan `/api/auth/login` (5 request / 15 menit / IP)
+- **Dokumentasi interaktif**: Swagger UI di `/api-docs` (lihat [SWAGGER_UI_GUIDE.md](./SWAGGER_UI_GUIDE.md))
+
+---
+
+## 🔐 Autentikasi
+
+### Alur Autentikasi
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant API as API Server
-    participant SUPA as Supabase Auth
+    participant DB as PostgreSQL
 
-    C->>API: POST /auth/login
-    API->>SUPA: Validate credentials
-    SUPA->>API: User data + tokens
-    API->>C: JWT + Supabase tokens
+    C->>API: POST /api/auth/register atau /login
+    API->>DB: Validasi / buat user
+    DB->>API: Data user
+    API->>C: JWT (kedaluwarsa 24 jam)
 
-    C->>API: API Request + JWT
-    API->>API: Validate JWT
-    API->>SUPA: Verify Supabase token
-    SUPA->>API: User context
+    C->>API: Request terproteksi apa pun + JWT
+    API->>API: Verifikasi signature & masa berlaku JWT
+    API->>DB: Query yang di-scope ke user_id
+    DB->>API: Data
     API->>C: Response
 ```
 
-### **Authentication Headers**
+### Header Autentikasi
 
 ```http
 Authorization: Bearer <jwt_token>
-X-Supabase-Token: <supabase_access_token>
-Content-Type: application/json
 ```
+
+Tidak ada "Supabase token" atau refresh token terpisah — satu JWT (default kedaluwarsa 24 jam) adalah keseluruhan mekanisme auth.
 
 ---
 
-## ðŸ“š lab Management Endpoints
+## 🔑 Endpoint Auth (`/api/auth`)
 
-### **1. Get All labs**
+### 1. Register
 
-**Endpoint**: `GET /api/labs`
+**`POST /api/auth/register`** — publik, dibatasi rate limit (5/15menit/IP)
 
-**Description**: Retrieve user's labs with optional pagination and basic filtering.
+**Request Body**
 
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-```
-
-**Query Parameters**:
-
-```javascript
+```json
 {
-  page: number,          // Page number (default: 1)
-  limit: number,         // Items per page (default: 10, max: 50)
-  sort_by: string,       // Sort field: title|author|created_at|rating
-  sort_order: string,    // Sort order: asc|desc (default: desc)
-  category: string,      // Filter by category
-  reading_status: string // Filter by status: to_read|reading|read
+  "email": "user@example.com",
+  "password": "minimal-6-karakter"
 }
 ```
 
-**Response**:
+**201 Created**
 
-```javascript
+```json
 {
   "success": true,
+  "message": "User registered successfully",
   "data": {
-    "labs": [
-      {
-        "id": "uuid",
-        "title": "Clean Code",
-        "author": "Robert C. Martin",
-        "category": "Technical",
-        "publication_year": 2008,
-        "isbn": "9780132350884",
-        "rating": 5,
-        "reading_status": "read",
-        "notes": "Excellent lab about writing maintainable code",
-        "cover_url": "https://example.com/cover.jpg",
-        "created_at": "2025-07-29T10:00:00Z",
-        "updated_at": "2025-07-29T10:00:00Z"
-      }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "per_page": 10,
-      "total_results": 25,
-      "total_pages": 3
-    }
-  }
-}
-```
-
-**Error Responses**:
-
-```javascript
-// 401 Unauthorized
-{
-  "success": false,
-  "message": "Authentication required",
-  "error_code": "AUTH_REQUIRED"
-}
-
-// 400 Bad Request
-{
-  "success": false,
-  "message": "Invalid pagination parameters",
-  "errors": [
-    {
-      "field": "page",
-      "message": "Page must be a positive integer"
-    }
-  ]
-}
-```
-
----
-
-### **2. Advanced Search labs**
-
-**Endpoint**: `GET /api/labs/search`
-
-**Description**: Advanced search with full-text search, filtering, and performance metrics.
-
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-```
-
-**Query Parameters**:
-
-```javascript
-{
-  q: string,             // Search query for title/author/notes
-  category: string,      // Filter by category
-  reading_status: string,// Filter by reading status
-  rating_min: number,    // Minimum rating (1-5)
-  rating_max: number,    // Maximum rating (1-5)
-  year_from: number,     // Publication year from
-  year_to: number,       // Publication year to
-  sort_by: string,       // Sort field
-  sort_order: string,    // Sort order
-  page: number,          // Page number
-  limit: number          // Items per page (max: 50)
-}
-```
-
-**Example Request**:
-
-```http
-GET /api/labs/search?q=javascript&category=Technical&rating_min=4&sort_by=rating&sort_order=desc&page=1&limit=10
-```
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    "labs": [
-      {
-        "id": "uuid",
-        "title": "JavaScript: The Good Parts",
-        "author": "Douglas Crockford",
-        "category": "Technical",
-        "publication_year": 2008,
-        "rating": 5,
-        "reading_status": "read",
-        "search_rank": 0.9876,  // Search relevance score
-        "created_at": "2025-07-29T10:00:00Z"
-      }
-    ],
-    "pagination": {
-      "current_page": 1,
-      "per_page": 10,
-      "total_results": 5,
-      "total_pages": 1
-    },
-    "search_query": "javascript",
-    "filters_applied": {
-      "category": "Technical",
-      "rating_min": 4,
-      "sort_by": "rating",
-      "sort_order": "desc"
-    }
+    "token": "eyJhbGciOi...",
+    "user": { "id": 1, "email": "user@example.com", "role": "user", "status": "active" },
+    "requiresConfirmation": false
   },
-  "performance": {
-    "query_time_ms": 45,
-    "results_count": 5,
-    "search_explanation": "Full-text search with filters"
-  }
+  "timestamp": "2026-09-13T10:00:00.000Z"
 }
 ```
 
----
+**409 Conflict** — email sudah terdaftar
 
-### **3. Create lab**
-
-**Endpoint**: `POST /api/labs`
-
-**Description**: Create a new lab in user's catalog.
-
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Request Body**:
-
-```javascript
-{
-  "title": "Clean Architecture",           // Required, max 500 chars
-  "author": "Robert C. Martin",          // Required, max 300 chars
-  "category": "Technical",               // Optional, max 100 chars
-  "publication_year": 2017,              // Optional, valid year
-  "isbn": "9780134494166",               // Optional, valid ISBN format
-  "rating": 5,                           // Optional, 1-5 integer
-  "reading_status": "reading",           // Optional: to_read|reading|read
-  "notes": "Great insights on architecture", // Optional, max 5000 chars
-  "cover_url": "https://example.com/cover.jpg" // Optional, valid URL
-}
-```
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    "id": "generated-uuid",
-    "title": "Clean Architecture",
-    "author": "Robert C. Martin",
-    "category": "Technical",
-    "publication_year": 2017,
-    "isbn": "9780134494166",
-    "rating": 5,
-    "reading_status": "reading",
-    "notes": "Great insights on architecture",
-    "cover_url": "https://example.com/cover.jpg",
-    "user_id": "user-uuid",
-    "created_at": "2025-07-29T10:00:00Z",
-    "updated_at": "2025-07-29T10:00:00Z"
-  },
-  "message": "lab created successfully"
-}
-```
-
-**Validation Errors**:
-
-```javascript
+```json
 {
   "success": false,
-  "message": "Validation failed",
-  "errors": [
-    {
-      "field": "title",
-      "message": "Title is required and must be 1-500 characters"
-    },
-    {
-      "field": "rating",
-      "message": "Rating must be between 1 and 5"
-    },
-    {
-      "field": "isbn",
-      "message": "ISBN must be in valid format (10 or 13 digits)"
-    }
-  ]
+  "error": { "message": "Email already registered", "code": "EMAIL_EXISTS" },
+  "timestamp": "2026-09-13T10:00:00.000Z"
 }
 ```
 
----
+**400 Bad Request** — gagal validasi (email kosong/tidak valid, password < 6 atau > 128 karakter)
 
-### **4. Update lab**
-
-**Endpoint**: `PUT /api/labs/:id`
-
-**Description**: Update an existing lab in user's catalog.
-
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Path Parameters**:
-
-- `id`: lab UUID
-
-**Request Body**: Same as Create lab (all fields optional for update)
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    // Updated lab object
-  },
-  "message": "lab updated successfully"
-}
-```
-
-**Error Responses**:
-
-```javascript
-// 404 Not Found
+```json
 {
   "success": false,
-  "message": "lab not found or access denied",
-  "error_code": "LAB_NOT_FOUND"
+  "status": "fail",
+  "error": { "message": "Validation Error: Password must be at least 6 characters long" },
+  "timestamp": "2026-09-13T10:00:00.000Z",
+  "path": "/api/auth/register",
+  "method": "POST"
+}
+```
+
+**429 Too Many Requests** — lebih dari 5 percobaan / 15 menit dari IP yang sama
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Too many authentication attempts. Please try again later",
+    "code": "RATE_LIMIT_EXCEEDED",
+    "retryAfter": 900
+  },
+  "timestamp": "2026-09-13T10:00:00.000Z"
 }
 ```
 
 ---
 
-### **5. Delete lab**
+### 2. Login
 
-**Endpoint**: `DELETE /api/labs/:id`
+**`POST /api/auth/login`** — publik, dibatasi rate limit (5/15menit/IP)
 
-**Description**: Delete a lab from user's catalog.
+**Request Body**
 
-**Headers**:
-
-```http
-Authorization: Bearer <token>
+```json
+{ "email": "user@example.com", "password": "minimal-6-karakter" }
 ```
 
-**Path Parameters**:
+**200 OK**
 
-- `id`: lab UUID
-
-**Response**:
-
-```javascript
+```json
 {
   "success": true,
-  "message": "lab deleted successfully"
+  "message": "Login successful",
+  "data": {
+    "token": "eyJhbGciOi...",
+    "user": { "id": 1, "email": "user@example.com", "role": "user", "status": "active" }
+  },
+  "timestamp": "2026-09-13T10:00:00.000Z"
+}
+```
+
+**401 Unauthorized** — email salah ATAU password salah (pesan sama untuk keduanya, memang disengaja — anti user-enumeration)
+
+```json
+{
+  "success": false,
+  "error": { "message": "Invalid email or password", "code": "AUTH_FAILED" },
+  "timestamp": "2026-09-13T10:00:00.000Z"
+}
+```
+
+**403 Forbidden** — akun berstatus `"locked"`
+
+```json
+{
+  "success": false,
+  "error": { "message": "User account is locked", "code": "USER_LOCKED" },
+  "timestamp": "2026-09-13T10:00:00.000Z"
+}
+```
+
+**400 / 429** — bentuk sama seperti Register di atas.
+
+---
+
+### 3. Logout
+
+**`POST /api/auth/logout`** — publik (tidak butuh token)
+
+**200 OK**
+
+```json
+{
+  "success": true,
+  "message": "Logout successful. Remove the token on the client side.",
+  "data": { "note": "This API uses stateless JWT auth." },
+  "timestamp": "2026-09-13T10:00:00.000Z"
 }
 ```
 
 ---
 
-### **6. Bulk Operations**
+### 4. Ambil User yang Sedang Login
 
-**Endpoint**: `GET /api/labs/search`
+**`GET /api/auth/me`** — butuh `Authorization: Bearer <token>`
 
-**Description**: Search labs by title or author for the authenticated user.
+**200 OK**
 
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-```
-
-**Query Parameters**:
-
-```javascript
+```json
 {
-  q: string,      // Search query for title/author
-  page: number,   // Page number (default: 1)
-  limit: number   // Items per page (default: 10, max: 100)
+  "success": true,
+  "data": { "user": { "id": 1, "email": "user@example.com", "role": "user", "status": "active", "created_at": "..." } },
+  "timestamp": "2026-09-13T10:00:00.000Z"
 }
 ```
 
-**Example Request**:
+**401 Unauthorized** (token kosong/tidak valid/kedaluwarsa) — catatan: bentuk error ini berasal dari auth middleware, bukan envelope error standar:
 
+```json
+{ "message": "No token provided" }
 ```
-GET /api/labs/search?q=atomic&page=1&limit=10
+atau `{ "message": "Invalid token format" }` atau `{ "message": "Invalid token" }`.
+
+---
+
+### 5. Verifikasi Token
+
+**`POST /api/auth/verify-token`** — butuh `Authorization: Bearer <token>`
+
+**200 OK**
+
+```json
+{
+  "success": true,
+  "data": { "valid": true, "user_id": 1, "email": "user@example.com", "expires_at": 1234567890 },
+  "message": "Token is valid",
+  "timestamp": "2026-09-13T10:00:00.000Z"
+}
 ```
 
-**Response**:
+**401 Unauthorized** — bentuk sama seperti `/me` di atas.
 
-```javascript
+---
+
+## 📚 Endpoint Lab (`/api/labs`)
+
+Semua endpoint di bawah butuh `Authorization: Bearer <token>`. Seorang user hanya bisa melihat/mengubah lab miliknya sendiri.
+
+### 1. Daftar Lab
+
+**`GET /api/labs`**
+
+**Query Parameter**
+
+| Param | Tipe | Default | Catatan |
+|-------|------|---------|---------|
+| `page` | integer | 1 | |
+| `limit` | integer | 50 | maksimum 100 |
+| `search` | string | – | cocok dengan `title` ATAU `description`, tidak case-sensitive |
+
+**200 OK**
+
+```json
 {
   "success": true,
   "data": [
-    { "id": 14, "title": "Atomic Habits", "author": "James Clear", "user_id": "..." }
+    { "id": 1, "title": "Lab Menari", "description": "Belajar menari", "user_id": 1, "created_at": "...", "updated_at": "..." }
   ],
-  "pagination": { "page": 1, "limit": 10, "total": 1, "totalPages": 1 },
-  "search_query": "atomic",
-  "timestamp": "2025-07-31T10:00:00.000Z"
+  "pagination": { "page": 1, "limit": 50, "total": 1, "totalPages": 1 },
+  "timestamp": "2026-09-13T10:00:00.000Z"
 }
 ```
 
-}
+### 2. Cari Lab
 
-````
+**`GET /api/labs/search`**
 
-2. **Update Category**:
-```javascript
-{
-  "action": "update_category",
-  "lab_ids": ["uuid1", "uuid2"],
-  "data": { "category": "Fiction" }
-}
-````
+Sama seperti di atas tapi query param bernama `q`, bukan `search`, default `limit` adalah 10, dan response juga menyertakan echo `search_query`.
 
-3. **Bulk Delete**:
-
-```javascript
-{
-  "action": "delete",
-  "lab_ids": ["uuid1", "uuid2"]
-}
+```
+GET /api/labs/search?q=menari&page=1&limit=10
 ```
 
-**Response**:
+### 3. Ambil Satu Lab
 
-```javascript
-{
-  "success": true,
-  "data": {
-    "total_processed": 3,
-    "successful": 2,
-    "failed": 1,
-    "results": [
-      {
-        "id": "uuid1",
-        "success": true,
-        "data": { /* updated lab object */ }
-      },
-      {
-        "id": "uuid2",
-        "success": true,
-        "data": { /* updated lab object */ }
-      },
-      {
-        "id": "uuid3",
-        "success": false,
-        "error": "lab not found"
-      }
-    ]
-  },
-  "message": "Bulk update_status completed: 2 successful, 1 failed"
-}
+**`GET /api/labs/:id`**
+
+**200 OK** — objek lab. **404 Not Found** jika tidak ada atau milik user lain.
+
+### 4. Buat Lab
+
+**`POST /api/labs`**
+
+**Request Body**
+
+```json
+{ "title": "Lab Baru", "description": "Deskripsi lab, 1-1000 karakter" }
 ```
+
+**201 Created** — lab yang dibuat. **409 Conflict** jika `title`+`description` identik sudah ada untuk user ini. **400 Bad Request** jika validasi gagal.
+
+### 5. Ubah Lab
+
+**`PUT /api/labs/:id`**
+
+**Request Body** (minimal satu field)
+
+```json
+{ "title": "Judul Baru" }
+```
+
+**200 OK** — lab yang diperbarui. **400** jika body tidak punya field valid. **404** jika tidak ditemukan/bukan milik user.
+
+### 6. Hapus Lab
+
+**`DELETE /api/labs/:id`**
+
+**200 OK**
+
+```json
+{ "success": true, "data": { "id": "3" }, "message": "lab deleted successfully", "timestamp": "..." }
+```
+
+**404** jika tidak ditemukan/bukan milik user.
 
 ---
 
-## ðŸ” Authentication Endpoints
+## 🩺 Endpoint Utilitas
 
-### **1. User Registration**
+### Health Check
 
-**Endpoint**: `POST /api/auth/register`
+**`GET /health`** — tidak butuh auth.
 
-**Description**: Register a new user account.
-
-**Request Body**:
-
-```javascript
-{
-  "email": "user@example.com",       // Required, valid email
-  "password": "SecurePass123!",      // Required, min 8 chars with complexity
-  "name": "John Doe"                 // Optional, display name
-}
+```json
+{ "success": true, "message": "Server is healthy", "timestamp": "...", "version": "1.0.0", "nodeEnv": "production" }
 ```
 
-**Response**:
+### Dokumentasi API
 
-```javascript
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "user-uuid",
-      "email": "user@example.com",
-      "name": "John Doe"
-    }
-  },
-  "message": "User registered successfully"
-}
-```
-
-**Password Requirements**:
-
-- Minimum 8 characters
-- At least one uppercase letter
-- At least one lowercase letter
-- At least one number
-- At least one special character (@$!%\*?&)
+**`GET /api-docs`** — Swagger UI (interaktif).
 
 ---
 
-### **2. User Login**
+## 🚨 Penanganan Error
 
-**Endpoint**: `POST /api/auth/login`
+Ada **tiga bentuk response error berbeda** di API ini — ini karakteristik nyata implementasi saat ini, bukan pilihan dokumentasi, dan QA sebaiknya menulis contract test yang menangkap regresi ke arah mana pun:
 
-**Description**: Authenticate user and receive tokens.
+**Bentuk A — error bisnis yang dikembalikan langsung oleh route** (mis. `EMAIL_EXISTS`, `AUTH_FAILED`, `USER_LOCKED`, error rate-limit):
 
-**Request Body**:
-
-```javascript
-{
-  "email": "user@example.com",
-  "password": "SecurePass123!"
-}
+```json
+{ "success": false, "error": { "message": "...", "code": "..." }, "timestamp": "..." }
 ```
 
-**Response**:
+**Bentuk B — error yang dilempar ke error handler terpusat** (error validasi, 500 tak terduga):
 
-```javascript
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "user-uuid",
-      "email": "user@example.com",
-      "name": "John Doe"
-    },
-    "tokens": {
-      "access_token": "jwt-token-here",
-      "supabase_token": "supabase-access-token",
-      "refresh_token": "refresh-token-here"
-    }
-  },
-  "message": "Login successful"
-}
+```json
+{ "success": false, "status": "fail", "error": { "message": "..." }, "timestamp": "...", "path": "...", "method": "..." }
 ```
+
+**Bentuk C — kegagalan auth middleware** (`/me`, `/verify-token`, semua `/api/labs/*` dengan token bermasalah):
+
+```json
+{ "message": "No token provided" }
+```
+
+### HTTP Status Code yang Dipakai
+
+| Status | Arti | Dipakai untuk |
+|--------|------|----------------|
+| 200 | OK | GET/PUT/DELETE sukses |
+| 201 | Created | POST sukses (register, buat lab) |
+| 400 | Bad Request | Error validasi |
+| 401 | Unauthorized | Token kosong/tidak valid/kedaluwarsa, kredensial login salah |
+| 403 | Forbidden | Akun terkunci |
+| 404 | Not Found | Resource tidak ada atau bukan milik pemanggil |
+| 409 | Conflict | Email duplikat, lab duplikat |
+| 429 | Too Many Requests | Rate limit terlampaui (hanya endpoint auth) |
+| 500 | Internal Server Error | Kegagalan server/database tak terduga |
 
 ---
 
-### **3. Forgot Password Request**
+## 🔧 Rate Limiting
 
-**Endpoint**: `POST /api/auth/forgot-password`
+| Endpoint | Limit | Window | Berlaku di |
+|----------|-------|--------|------------|
+| `POST /api/auth/register` | 5 | 15 menit per IP | semua environment kecuali `NODE_ENV=test` |
+| `POST /api/auth/login` | 5 | 15 menit per IP | semua environment kecuali `NODE_ENV=test` |
+| `/api/labs/*` | tidak ada | – | tidak dibatasi rate |
 
-**Description**: Request password reset email.
-
-**Rate Limiting**: 3 requests per hour per email/IP
-
-**Request Body**:
-
-```javascript
-{
-  "email": "user@example.com"
-}
-```
-
-**Response** (Always returns success to prevent email enumeration):
-
-```javascript
-{
-  "success": true,
-  "message": "Password reset email sent if account exists",
-  "rate_limit": {
-    "remaining_attempts": 2,
-    "reset_time": "2025-07-29T11:00:00Z"
-  }
-}
-```
-
-**Rate Limit Error**:
-
-```javascript
-{
-  "success": false,
-  "message": "Too many password reset attempts, please try again later.",
-  "error_code": "RATE_LIMIT_EXCEEDED",
-  "retry_after": 3600
-}
-```
+Response rate-limit menyertakan header `RateLimit-*` (`standardHeaders: true`) dan body JSON dengan `retryAfter` dalam detik.
 
 ---
 
-### **4. Validate Reset Token**
+## 🧪 Menguji API
 
-**Endpoint**: `GET /api/auth/reset-password/:token`
-
-**Description**: Validate password reset token.
-
-**Path Parameters**:
-
-- `token`: Password reset token from email
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    "token_valid": true,
-    "expires_at": "2025-07-29T11:00:00Z",
-    "email": "u***@example.com"  // Masked email
-  }
-}
-```
-
-**Invalid Token**:
-
-```javascript
-{
-  "success": false,
-  "message": "Invalid or expired reset token",
-  "error_code": "INVALID_TOKEN"
-}
-```
-
----
-
-### **5. Reset Password**
-
-**Endpoint**: `POST /api/auth/reset-password`
-
-**Description**: Complete password reset process.
-
-**Request Body**:
-
-```javascript
-{
-  "token": "reset-token-from-email",
-  "new_password": "NewSecurePass123!"
-}
-```
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "message": "Password successfully updated"
-}
-```
-
-**Validation Errors**:
-
-```javascript
-{
-  "success": false,
-  "message": "Password reset validation failed",
-  "errors": [
-    {
-      "field": "new_password",
-      "message": "Password must be 8-128 characters with uppercase, lowercase, number, and special character"
-    },
-    {
-      "field": "token",
-      "message": "Invalid reset token"
-    }
-  ]
-}
-```
-
----
-
-## ðŸ“Š User Statistics Endpoints
-
-### **1. Get User lab Statistics**
-
-**Endpoint**: `GET /api/users/stats`
-
-**Description**: Get comprehensive statistics about user's lab collection.
-
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-```
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    "total_labs": 127,
-    "labs_read": 89,
-    "labs_reading": 5,
-    "labs_to_read": 33,
-    "average_rating": 4.2,
-    "total_authors": 76,
-    "total_categories": 12,
-    "reading_stats": {
-      "labs_this_year": 28,
-      "labs_this_month": 3,
-      "favorite_category": "Technical",
-      "most_read_author": "Robert C. Martin"
-    },
-    "category_breakdown": [
-      { "category": "Technical", "count": 45 },
-      { "category": "Fiction", "count": 32 },
-      { "category": "Biography", "count": 18 }
-    ]
-  }
-}
-```
-
----
-
-## ðŸ” Search Analytics Endpoints
-
-### **1. Popular Search Terms**
-
-**Endpoint**: `GET /api/search/popular`
-
-**Description**: Get popular search terms (aggregated anonymously).
-
-**Headers**:
-
-```http
-Authorization: Bearer <token>
-```
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    "popular_searches": [
-      { "term": "javascript", "count": 156 },
-      { "term": "python", "count": 142 },
-      { "term": "design patterns", "count": 98 }
-    ],
-    "trending_categories": [
-      { "category": "Technical", "growth": 15.2 },
-      { "category": "Self-Help", "growth": 8.7 }
-    ]
-  }
-}
-```
-
----
-
-## âš¡ Performance & Health Endpoints
-
-### **1. API Health Check**
-
-**Endpoint**: `GET /api/health`
-
-**Description**: Check API health status.
-
-**No Authentication Required**
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "status": "healthy",
-  "timestamp": "2025-07-29T10:00:00Z",
-  "version": "2.0.0",
-  "services": {
-    "database": "healthy",
-    "supabase": "healthy",
-    "email": "healthy",
-    "telegram": "healthy"
-  },
-  "performance": {
-    "uptime": "7d 12h 34m",
-    "response_time_ms": 12,
-    "memory_usage": "145MB",
-    "active_connections": 23
-  }
-}
-```
-
-### **2. API Metrics**
-
-**Endpoint**: `GET /api/metrics`
-
-**Description**: Get API performance metrics (admin only).
-
-**Headers**:
-
-```http
-Authorization: Bearer <admin_token>
-```
-
-**Response**:
-
-```javascript
-{
-  "success": true,
-  "data": {
-    "requests": {
-      "total": 125847,
-      "today": 1247,
-      "per_hour": 52
-    },
-    "performance": {
-      "avg_response_time": 89,
-      "p95_response_time": 245,
-      "error_rate": 0.02
-    },
-    "endpoints": [
-      {
-        "path": "/api/labs/search",
-        "count": 45231,
-        "avg_time": 156
-      }
-    ]
-  }
-}
-```
-
----
-
-## ðŸš¨ Error Handling
-
-### **Standard Error Response Format**
-
-```javascript
-{
-  "success": false,
-  "message": "Human-readable error message",
-  "error_code": "MACHINE_READABLE_CODE",
-  "errors": [                    // For validation errors
-    {
-      "field": "field_name",
-      "message": "Field-specific error message"
-    }
-  ],
-  "timestamp": "2025-07-29T10:00:00Z",
-  "request_id": "uuid-for-tracking"
-}
-```
-
-### **HTTP Status Codes**
-
-| Status Code | Meaning               | Usage                                            |
-| ----------- | --------------------- | ------------------------------------------------ |
-| 200         | OK                    | Successful GET, PUT requests                     |
-| 201         | Created               | Successful POST requests                         |
-| 400         | Bad Request           | Validation errors, malformed requests            |
-| 401         | Unauthorized          | Authentication required or failed                |
-| 403         | Forbidden             | Access denied (authenticated but not authorized) |
-| 404         | Not Found             | Resource not found or access denied              |
-| 409         | Conflict              | Resource already exists (e.g., duplicate email)  |
-| 422         | Unprocessable Entity  | Semantic validation errors                       |
-| 429         | Too Many Requests     | Rate limit exceeded                              |
-| 500         | Internal Server Error | Server errors                                    |
-| 503         | Service Unavailable   | Temporary server issues                          |
-
-### **Common Error Codes**
-
-```javascript
-// Authentication Errors
-"AUTH_REQUIRED"; // No token provided
-"AUTH_INVALID"; // Invalid token
-"AUTH_EXPIRED"; // Token expired
-"ACCESS_DENIED"; // Insufficient permissions
-
-// Validation Errors
-"VALIDATION_FAILED"; // Request validation failed
-"INVALID_FORMAT"; // Data format errors
-"REQUIRED_FIELD"; // Missing required fields
-
-// Resource Errors
-"RESOURCE_NOT_FOUND"; // Resource doesn't exist
-"RESOURCE_EXISTS"; // Resource already exists
-"RESOURCE_LIMIT"; // Resource limit exceeded
-
-// Rate Limiting
-"RATE_LIMIT_EXCEEDED"; // Too many requests
-"QUOTA_EXCEEDED"; // Usage quota exceeded
-
-// System Errors
-"DATABASE_ERROR"; // Database connection issues
-"SERVICE_UNAVAILABLE"; // External service down
-"INTERNAL_ERROR"; // Generic server error
-```
-
----
-
-## ðŸ”§ Rate Limiting
-
-### **Rate Limit Headers**
-
-```http
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 97
-X-RateLimit-Reset: 1690629600
-X-RateLimit-Window: 900
-```
-
-### **Rate Limits by Endpoint**
-
-| Endpoint                    | Limit | Window | Notes          |
-| --------------------------- | ----- | ------ | -------------- |
-| `/api/auth/login`           | 10    | 15 min | Per IP address |
-| `/api/auth/register`        | 5     | 1 hour | Per IP address |
-| `/api/auth/forgot-password` | 3     | 1 hour | Per email/IP   |
-| `/api/labs/search`          | 100   | 15 min | Per user       |
-| `/api/labs/*`               | 200   | 15 min | Per user       |
-| `/api/*` (general)          | 1000  | 15 min | Per user       |
-
----
-
-## ðŸ“ˆ API Versioning
-
-### **Current Version**: v2.0
-
-### **Versioning Strategy**
-
-1. **Header-based versioning** (preferred):
-
-```http
-API-Version: 2.0
-```
-
-2. **URL-based versioning** (fallback):
-
-```http
-GET /api/v2/labs
-```
-
-### **Version Compatibility**
-
-- **v1.x**: Legacy support (deprecated, remove 2026-01-01)
-- **v2.0**: Current version with enhanced features
-- **v2.x**: Future minor updates (backward compatible)
-
----
-
-## ðŸ§ª Testing the API
-
-### **Using cURL**
+### Menggunakan cURL
 
 ```bash
-# Login
-curl -X POST https://api.scriptlabs.com/api/auth/login \
+# Register
+curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"password"}'
+  -d '{"email":"qa@example.com","password":"testpass123"}'
 
-# Search labs
-curl -X GET "https://api.scriptlabs.com/api/labs/search?q=javascript&limit=5" \
+# Login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"qa@example.com","password":"testpass123"}'
+
+# List labs
+curl -X GET "http://localhost:3000/api/labs?page=1&limit=10" \
   -H "Authorization: Bearer <token>"
 
-# Create lab
-curl -X POST https://api.scriptlabs.com/api/labs \
+# Buat lab
+curl -X POST http://localhost:3000/api/labs \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"title":"New lab","author":"Author Name"}'
+  -d '{"title":"New Lab","description":"A description"}'
 ```
 
-### **Postman Collection**
+### Postman
 
-A comprehensive Postman collection is available at:
-
-- **File**: `Script_Labs_API_v2.postman_collection.json`
-- **Environment**: `lab-Catalog-Environment.postman_environment.json`
+Koleksi Postman tersedia di folder `postman/` dalam repository ini — import koleksi tersebut beserta environment yang mendefinisikan `BASE_URL_LOCAL` (atau base URL deployment kamu).
 
 ---
 
-## ðŸ“‹ API Development Guidelines
-
-### **Request/Response Best Practices**
-
-1. **Use consistent naming**: `snake_case` for JSON fields
-2. **Include timestamps**: ISO 8601 format with timezone
-3. **Provide pagination**: For all list endpoints
-4. **Return complete objects**: After create/update operations
-5. **Use appropriate HTTP methods**: GET, POST, PUT, DELETE
-6. **Include performance metrics**: For search operations
-
-### **Security Considerations**
-
-1. **Always validate input**: Server-side validation required
-2. **Sanitize output**: Prevent XSS in responses
-3. **Rate limiting**: Protect against abuse
-4. **Authentication**: Required for all user data endpoints
-5. **Authorization**: Check user permissions for all operations
-6. **Audit logging**: Log sensitive operations
-
----
-
-## ðŸŽ¯ API Roadmap
-
-### **Planned Enhancements (v2.1)**
-
-- GraphQL endpoint for flexible queries
-- WebSocket support for real-time updates
-- Advanced analytics endpoints
-- lab recommendation engine
-- Social features (sharing, reviews)
-
-### **Future Considerations (v3.0)**
-
-- Microservices architecture
-- API gateway implementation
-- Advanced caching strategies
-- Machine learning integrations
-
----
-
-**Document Status**: âœ… Complete  
-**Last Updated**: July 29, 2025  
-**API Version**: 2.0  
-**Next Review**: Monthly during active development
+**Status Dokumen**: ✅ Lengkap
+**Terakhir Diperbarui**: 13 September 2026
+**Versi API**: 2.0

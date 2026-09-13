@@ -1,400 +1,293 @@
-﻿# Product Requirements Document (PRD)
+# Product Requirements Document (PRD) - Versi 1.0 (Baseline Historis)
 
 ## Script Labs Application
 
-### Document Information
+### Informasi Dokumen
 
-- **Version**: 1.0
-- **Date**: 2024
-- **Author**: Hendri Christianto
-- **Status**: Active Development
-
----
-
-## 1. Executive Summary
-
-### 1.1 Product Overview
-
-Script Labs App adalah aplikasi web full-stack untuk manajemen katalog buku pribadi dengan sistem autentikasi yang aman. Aplikasi ini memungkinkan pengguna untuk mendaftar, login, dan mengelola koleksi buku mereka dengan operasi CRUD (Create, Read, Update, Delete).
-
-### 1.2 Business Objectives
-
-- Menyediakan platform yang mudah digunakan untuk mengelola koleksi buku pribadi
-- Implementasi best practices dalam pengembangan web full-stack
-- Demonstrasi integrasi teknologi modern (Node.js, Express, PostgreSQL, JWT, Supabase)
-- Pembelajaran dan portfolio development
-
-### 1.3 Success Metrics
-
-- Aplikasi dapat menangani operasi CRUD buku dengan response time < 500ms
-- Authentication system yang secure dengan JWT token
-- User-friendly interface dengan responsive design
-- Code quality dengan test coverage minimal 80%
+- **Versi**: 1.0
+- **Tanggal**: 2024 (ditulis ulang 13 September 2026 agar akurat)
+- **Penulis**: Hendri Christianto
+- **Status**: Historis / Sudah digantikan — disimpan hanya sebagai konteks sejarah proyek.
+- **Requirement resmi saat ini**: lihat [PRD V2.0](./PRD_Script_Labs_V2.md). Dokumen V1 ini menjelaskan cakupan MVP awal proyek. Versi sebelumnya dari dokumen ini masih menyebut fitur katalog buku, UI/frontend, dan Supabase yang **tidak pernah diimplementasikan** — semua itu sudah dihapus dari versi ini agar tidak menyesatkan.
 
 ---
 
-## 2. Product Vision & Strategy
+## 1. Ringkasan Eksekutif
 
-### 2.1 Vision Statement
+### 1.1 Gambaran Produk
 
-"Menjadi aplikasi katalog buku digital yang sederhana, aman, dan mudah digunakan untuk manajemen koleksi buku pribadi."
+Script Labs App adalah REST API untuk manajemen resource "lab" (record dengan `title` + `description`) milik user, dengan sistem autentikasi JWT. Aplikasi ini dipakai sebagai **API latihan untuk QA** — bukan produk SaaS produksi — sehingga QA dapat mendaftar, login, dan melakukan operasi CRUD (Create, Read, Update, Delete) untuk keperluan penulisan test case, automation, dan performance testing.
 
-### 2.2 Target Users
+### 1.2 Tujuan Bisnis
 
-- **Primary**: Pembaca aktif yang ingin mengorganisir koleksi buku digital
-- **Secondary**: Developers yang belajar full-stack development
-- **Tertiary**: Educational purposes dan portfolio demonstration
+- Menyediakan API nyata (bukan mock) yang mudah dipakai untuk latihan QA: desain test case, automation, dan performance testing.
+- Implementasi best practice dalam pengembangan REST API (Node.js, Express, PostgreSQL, JWT).
+- Pembelajaran dan portfolio development.
 
-### 2.3 User Personas
+### 1.3 Catatan Penting
 
-#### Persona 1: lab Enthusiast
-
-- **Age**: 25-45
-- **Tech Savvy**: Medium
-- **Goals**: Mengorganisir dan tracking buku yang telah dibaca
-- **Pain Points**: Kesulitan mengingat buku yang sudah dibaca, tidak ada sistem untuk track reading progress
-
-#### Persona 2: Student Developer
-
-- **Age**: 20-30
-- **Tech Savvy**: High
-- **Goals**: Belajar full-stack development dengan real project
-- **Pain Points**: Butuh contoh implementasi best practices untuk portfolio
+Repository ini (`script-labs`) hanya berisi **backend API**. Frontend/UI-nya ada, tapi di repository terpisah: [Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app), di-deploy di Vercel dengan domain [labs.hendri.me](https://labs.hendri.me). Jangan menulis requirement atau test case berbasis tampilan/UI berdasarkan dokumen ini — lihat [PRD V2.0, Bagian 2.0 & 2.2](./PRD_Script_Labs_V2.md#20-repository-terkait) untuk penjelasan pemisahan repo dan daftar hal-hal yang di luar ruang lingkup PRD backend ini.
 
 ---
 
-## 3. Functional Requirements
+## 2. Kebutuhan Fungsional (Ringkas)
 
-### 3.1 Authentication & Authorization
+Lihat [PRD V2.0, Bagian 3](./PRD_Script_Labs_V2.md#3-kebutuhan-fungsional-functional-requirements) untuk requirement lengkap berformat Given/When/Then. Ringkasan cakupan awal (MVP):
 
-| Feature ID | Feature Name         | Priority | Description                                     |
-| ---------- | -------------------- | -------- | ----------------------------------------------- |
-| AUTH-001   | User Registration    | High     | User dapat mendaftar dengan email dan password  |
-| AUTH-002   | User Login           | High     | User dapat login dan mendapat JWT token         |
-| AUTH-003   | JWT Token Validation | High     | Semua protected routes memvalidasi JWT token    |
-| AUTH-004   | Password Encryption  | High     | Password di-hash dengan bcrypt sebelum disimpan |
-| AUTH-005   | Token Expiration     | Medium   | JWT token memiliki expiration time              |
+### 2.1 Autentikasi & Otorisasi
 
-### 3.2 lab Management
+| ID Fitur | Nama Fitur | Prioritas | Deskripsi |
+|----------|-----------|-----------|-----------|
+| AUTH-001 | Registrasi User | Tinggi | User dapat mendaftar dengan email dan password |
+| AUTH-002 | Login User | Tinggi | User dapat login dan mendapat JWT token |
+| AUTH-003 | Validasi JWT Token | Tinggi | Semua protected route memvalidasi JWT token |
+| AUTH-004 | Enkripsi Password | Tinggi | Password di-hash dengan bcrypt sebelum disimpan |
+| AUTH-005 | Kedaluwarsa Token | Sedang | JWT token memiliki waktu kedaluwarsa |
 
-| Feature ID | Feature Name   | Priority | Description                                      |
-| ---------- | -------------- | -------- | ------------------------------------------------ |
-| lab-001    | View All labs  | High     | User dapat melihat semua buku dalam koleksi      |
-| lab-002    | Add New lab    | High     | User dapat menambah buku baru (title, author)    |
-| lab-003    | Update lab     | High     | User dapat mengedit informasi buku               |
-| lab-004    | Delete lab     | High     | User dapat menghapus buku dari koleksi           |
-| lab-005    | lab Search     | Medium   | User dapat mencari buku berdasarkan title/author |
-| lab-006    | lab Categories | Low      | User dapat mengkategorikan buku                  |
+### 2.2 Manajemen Lab
 
-### 3.3 User Interface
-
-| Feature ID | Feature Name        | Priority | Description                              |
-| ---------- | ------------------- | -------- | ---------------------------------------- |
-| UI-001     | Responsive Design   | High     | UI responsif untuk desktop dan mobile    |
-| UI-002     | Login/Register Form | High     | Form yang user-friendly untuk auth       |
-| UI-003     | lab List Display    | High     | Tampilan list buku yang mudah dibaca     |
-| UI-004     | Add/Edit lab Modal  | High     | Modal untuk input data buku              |
-| UI-005     | Error Messages      | High     | Pesan error yang informatif              |
-| UI-006     | Loading States      | Medium   | Indikator loading untuk async operations |
+| ID Fitur | Nama Fitur | Prioritas | Deskripsi |
+|----------|-----------|-----------|-----------|
+| LAB-001 | Lihat Semua Lab | Tinggi | User dapat melihat semua lab miliknya |
+| LAB-002 | Tambah Lab Baru | Tinggi | User dapat menambah lab baru (title, description) |
+| LAB-003 | Ubah Lab | Tinggi | User dapat mengedit informasi lab |
+| LAB-004 | Hapus Lab | Tinggi | User dapat menghapus lab dari koleksinya |
+| LAB-005 | Pencarian Lab | Sedang | User dapat mencari lab berdasarkan title/description |
 
 ---
 
-## 4. Technical Requirements
+## 3. Kebutuhan Teknis
 
-### 4.1 Architecture
+### 3.1 Arsitektur
 
 ```
-Frontend (HTML/CSS/JS) â†” Backend API (Node.js/Express) â†” Database (PostgreSQL/Supabase)
-                        â†•
-                   JWT Authentication
+Client (Postman / automation / load test) ↔ Backend API (Node.js/Express) ↔ Database (PostgreSQL, self-hosted)
+                                            ↕
+                                     JWT Authentication
 ```
 
-### 4.2 Technology Stack
+### 3.2 Technology Stack
 
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Backend**: Node.js, Express.js
-- **Database**: PostgreSQL (via Supabase)
-- **Authentication**: JWT (JSON Web Tokens)
-- **ORM/Database Client**: pg (node-postgres)
-- **Security**: bcryptjs for password hashing
-- **CORS**: cors middleware
+- **Backend**: Node.js, Express.js (repository ini API-only — frontend-nya ada di repository terpisah [script-labs-app](https://github.com/Hendrich/script-labs-app))
+- **Database**: PostgreSQL self-hosted
+- **Autentikasi**: JWT (JSON Web Token)
+- **Database Client**: pg (node-postgres)
+- **Keamanan**: bcrypt untuk hashing password
+- **CORS**: middleware cors
 - **Environment**: dotenv
 
-### 4.3 API Specifications
+### 3.3 Spesifikasi API
 
-#### Authentication Endpoints
+#### Endpoint Autentikasi
 
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - Registrasi user
+- `POST /api/auth/login` - Login user
+- `POST /api/auth/logout` - Konfirmasi logout sisi client (stateless)
+- `GET /api/auth/me` - Ambil profil user yang sedang login
+- `POST /api/auth/verify-token` - Verifikasi JWT masih valid
 
-#### lab Endpoints (Protected)
+#### Endpoint Lab (Terproteksi)
 
-- `GET /api/labs` - Get all user's labs
-- `POST /api/labs` - Add new lab
-- `PUT /api/labs/:id` - Update lab
-- `DELETE /api/labs/:id` - Delete lab
+- `GET /api/labs` - Ambil semua lab milik user (dengan pagination, opsional `search`)
+- `GET /api/labs/search` - Cari lab milik user (dengan pagination, param `q`)
+- `GET /api/labs/:id` - Ambil satu lab
+- `POST /api/labs` - Tambah lab baru
+- `PUT /api/labs/:id` - Ubah lab
+- `DELETE /api/labs/:id` - Hapus lab
 
-### 4.4 Database Schema
+Lihat [PRD V2.0, Bagian 3](./PRD_Script_Labs_V2.md#3-kebutuhan-fungsional-functional-requirements) untuk kontrak request/response lengkap dan terkini per endpoint.
+
+### 3.4 Skema Database
 
 ```sql
--- Users table (managed by Supabase Auth)
-auth.users (
-  id UUID PRIMARY KEY,
-  email VARCHAR UNIQUE,
-  encrypted_password VARCHAR,
-  created_at TIMESTAMP
-)
-
--- labs table
-public.labs (
+-- tabel users (PostgreSQL self-hosted, lihat database/schema_pg.sql)
+CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  user_id UUID REFERENCES auth.users(id),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'user',
+  status VARCHAR(50) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
-)
+);
+
+-- tabel labs
+CREATE TABLE labs (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
+> Catatan: nilai `id` adalah bilangan bulat auto-increment biasa (`SERIAL`), bukan UUID, dan tidak ada field `author`/`isbn`/`rating` — sebuah lab hanya punya `title` dan `description`.
+
 ---
 
-## 5. Non-Functional Requirements
+## 4. Kebutuhan Non-Fungsional
 
-### 5.1 Performance
+### 4.1 Performa
 
-- API response time: < 500ms untuk semua endpoints
-- Database query optimization untuk large datasets
-- Frontend loading time: < 3 seconds
-- Concurrent users: minimal 100 users
+- Waktu respons API: < 500ms untuk sebagian besar endpoint
+- Optimasi query database untuk dataset besar
+- Concurrent users: minimal 100 user (target, belum diverifikasi dengan performance test)
 
-### 5.2 Security
+### 4.2 Keamanan
 
-- Password hashing dengan bcrypt (salt rounds: 10)
-- JWT token dengan secure secret key
-- CORS configuration untuk cross-origin requests
-- Input validation dan sanitization
-- SQL injection prevention dengan parameterized queries
+- Hashing password dengan bcrypt (cost factor 12)
+- JWT dengan secret key yang aman
+- Konfigurasi CORS untuk cross-origin request
+- Validasi dan sanitasi input
+- Pencegahan SQL injection dengan parameterized query
 
-### 5.3 Scalability
+### 4.3 Skalabilitas
 
-- Modular code structure untuk easy maintenance
-- Environment-based configuration
+- Struktur kode modular untuk kemudahan maintenance
+- Konfigurasi berbasis environment
 - Database connection pooling
-- Stateless API design
+- Desain API stateless
 
-### 5.4 Reliability
+### 4.4 Reliabilitas
 
-- Error handling dengan proper HTTP status codes
-- Graceful error messages untuk users
-- Database connection error handling
-- API versioning untuk backward compatibility
-
-### 5.5 Usability
-
-- Intuitive user interface
-- Clear error messages
-- Responsive design untuk semua devices
-- Accessibility considerations (ARIA labels, semantic HTML)
+- Error handling dengan HTTP status code yang tepat
+- Pesan error yang informatif untuk client
+- Penanganan error koneksi database
 
 ---
 
-## 6. API Design Standards
+## 5. Standar Desain API
 
-### 6.1 RESTful Principles
+### 5.1 Prinsip RESTful
 
-- Proper HTTP methods (GET, POST, PUT, DELETE)
-- Meaningful resource URLs
-- Consistent response formats
-- Appropriate HTTP status codes
+- Metode HTTP yang tepat (GET, POST, PUT, DELETE)
+- URL resource yang bermakna
+- Format response yang konsisten
+- HTTP status code yang sesuai
 
-### 6.2 Response Format
+### 5.2 Format Response Sukses
 
 ```json
 {
   "success": true,
-  "data": {...},
+  "data": { "..." : "..." },
   "message": "Operation successful",
-  "timestamp": "2024-01-01T00:00:00Z"
+  "timestamp": "2026-09-13T00:00:00Z"
 }
 ```
 
-### 6.3 Error Handling
+### 5.3 Format Response Error
 
 ```json
 {
   "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Title is required",
-    "details": {...}
+    "message": "Title is required"
   },
-  "timestamp": "2024-01-01T00:00:00Z"
+  "timestamp": "2026-09-13T00:00:00Z"
 }
 ```
 
----
-
-## 7. Testing Strategy
-
-### 7.1 Testing Types
-
-- **Unit Tests**: Individual functions dan components
-- **Integration Tests**: API endpoints dengan database
-- **E2E Tests**: Full user workflows
-- **API Tests**: Postman collection untuk manual testing
-
-### 7.2 Test Coverage
-
-- Minimum 80% code coverage
-- All API endpoints tested
-- Authentication flow testing
-- Error scenarios testing
-
-### 7.3 Testing Tools
-
-- **Backend**: Jest/Mocha untuk unit tests
-- **API**: Postman collection dengan automated tests
-- **Frontend**: Manual testing + Browser developer tools
-- **Database**: Test database untuk integration tests
+> Catatan: bentuk error aktual di API ini sedikit lebih bervariasi dari contoh di atas — lihat [API_DOCUMENTATION_V2.md, bagian Error Handling](./API_DOCUMENTATION_V2.md#-penanganan-error) untuk 3 bentuk error yang benar-benar dipakai saat ini.
 
 ---
 
-## 8. Deployment & Infrastructure
+## 6. Strategi Testing
 
-### 8.1 Development Environment
+### 6.1 Jenis Testing
 
-- Local development dengan nodemon
-- Environment variables via .env file
-- Local PostgreSQL atau Supabase connection
+- **Unit Test**: fungsi dan middleware individual
+- **Integration Test**: endpoint API dengan database
+- **API Test**: koleksi Postman untuk testing manual/automation
 
-### 8.2 Production Environment
+### 6.2 Cakupan Test
 
-- **Hosting**: Render.com (configured via .render.yaml)
-- **Database**: Supabase PostgreSQL
-- **Environment Variables**: Secure environment configuration
-- **SSL**: HTTPS enforced
+- Semua endpoint API diuji
+- Alur autentikasi diuji
+- Skenario error diuji
 
-### 8.3 CI/CD Pipeline
+### 6.3 Tools Testing
 
-- Git-based deployment
-- Automated testing before deployment
-- Environment-specific configurations
-- Database migration scripts
+- **Backend**: Jest + Supertest untuk unit/integration test (sudah ada di `tests/`)
+- **API**: koleksi Postman dengan test otomatis (lihat folder `postman/`)
+- **Database**: database test terpisah untuk integration test
 
 ---
 
-## 9. Risk Assessment
+## 7. Deployment & Infrastruktur
 
-### 9.1 Technical Risks
+### 7.1 Environment Development
 
-| Risk                       | Impact | Probability | Mitigation                           |
-| -------------------------- | ------ | ----------- | ------------------------------------ |
-| Database connection issues | High   | Medium      | Connection pooling, error handling   |
-| JWT token security         | High   | Low         | Secure secret keys, token expiration |
-| API rate limiting          | Medium | Medium      | Implement rate limiting middleware   |
-| CORS configuration         | Medium | Low         | Proper CORS setup untuk production   |
+- Development lokal dengan nodemon
+- Environment variable via file `.env`
+- Koneksi PostgreSQL lokal
 
-### 9.2 Business Risks
+### 7.2 Environment Production
 
-| Risk                     | Impact | Probability | Mitigation                               |
-| ------------------------ | ------ | ----------- | ---------------------------------------- |
-| User data loss           | High   | Low         | Regular backups, transaction handling    |
-| Performance degradation  | Medium | Medium      | Query optimization, caching              |
-| Security vulnerabilities | High   | Low         | Security best practices, regular updates |
+- **Hosting**: Vultr VPS (PM2 sebagai process manager + Nginx sebagai reverse proxy) — lihat [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+- **Database**: PostgreSQL self-hosted di VPS yang sama
+- **Environment Variable**: konfigurasi aman (`.env`, tidak pernah di-commit)
+- **SSL**: HTTPS wajib via Nginx + Let's Encrypt (certbot)
 
 ---
 
-## 10. Timeline & Milestones
+## 8. Penilaian Risiko
 
-### Phase 1: Foundation (Week 1-2) âœ… COMPLETED
+### 8.1 Risiko Teknis
 
-- [x] Basic project structure
-- [x] Authentication system (register/login)
-- [x] Database setup dengan Supabase
-- [x] Basic API endpoints
+| Risiko | Dampak | Kemungkinan | Mitigasi |
+|--------|--------|-------------|----------|
+| Masalah koneksi database | Tinggi | Sedang | Connection pooling, error handling |
+| Keamanan JWT token | Tinggi | Rendah | Secret key yang aman, token expiration |
+| Rate limiting API | Sedang | Sedang | Middleware rate limiting pada endpoint auth |
+| Konfigurasi CORS | Sedang | Rendah | Setup CORS yang tepat untuk production |
 
-### Phase 2: Core Features (Week 3-4) âœ… COMPLETED
+### 8.2 Risiko Bisnis
 
-- [x] CRUD operations untuk labs
-- [x] JWT middleware
-- [x] Frontend integration
-- [x] Basic error handling
-
-### Phase 3: Enhancement (Week 5-6) ðŸ”„ CURRENT
-
-- [ ] API documentation (OpenAPI/Swagger)
-- [ ] Postman collection dengan tests
-- [ ] Code refactoring dan optimization
-- [ ] UI/UX improvements
-
-### Phase 4: Quality Assurance (Week 7-8) ðŸ“‹ PLANNED
-
-- [ ] Comprehensive testing
-- [ ] Security audit
-- [ ] Performance optimization
-- [ ] Documentation completion
-
-### Phase 5: Deployment & Maintenance (Week 9+) ðŸ“‹ PLANNED
-
-- [ ] Production deployment
-- [ ] Monitoring setup
-- [ ] User feedback collection
-- [ ] Iterative improvements
+| Risiko | Dampak | Kemungkinan | Mitigasi |
+|--------|--------|-------------|----------|
+| Kehilangan data user | Tinggi | Rendah | Backup rutin |
+| Degradasi performa | Sedang | Sedang | Optimasi query |
+| Kerentanan keamanan | Tinggi | Rendah | Best practice keamanan, update rutin |
 
 ---
 
-## 11. Success Criteria
-
-### 11.1 MVP (Minimum Viable Product)
+## 9. Kriteria Keberhasilan (MVP)
 
 - [x] User dapat register dan login
-- [x] User dapat CRUD buku setelah login
-- [x] API endpoints working dengan proper authentication
-- [x] Basic frontend interface
-
-### 11.2 Enhanced Version
-
-- [ ] Comprehensive API documentation
-- [ ] Automated testing suite
-- [ ] Enhanced UI/UX
-- [ ] Performance optimization
-- [ ] Security hardening
-
-### 11.3 Future Enhancements
-
-- [ ] lab categories dan tags
-- [ ] Reading progress tracking
-- [ ] lab recommendations
-- [ ] Export/import functionality
-- [ ] Social features (sharing, reviews)
+- [x] User dapat CRUD lab setelah login
+- [x] Endpoint API berfungsi dengan autentikasi yang tepat
+- [x] Rate limiting aktif pada endpoint auth
+- [ ] Test suite otomatis mencakup seluruh requirement (lihat [PRD V2.0, Bagian 6](./PRD_Script_Labs_V2.md#6-kriteria-keberhasilan))
 
 ---
 
-## 12. Appendices
+## 10. Lampiran
 
-### 12.1 Glossary
+### 10.1 Glosarium
 
-- **JWT**: JSON Web Token untuk authentication
-- **CRUD**: Create, Read, Update, Delete operations
+- **JWT**: JSON Web Token untuk autentikasi
+- **CRUD**: Create, Read, Update, Delete
 - **API**: Application Programming Interface
 - **CORS**: Cross-Origin Resource Sharing
-- **ORM**: Object-Relational Mapping
 
-### 12.2 References
+### 10.2 Referensi
 
-- [Express.js Documentation](https://expressjs.com/)
+- [Dokumentasi Express.js](https://expressjs.com/)
 - [JWT.io](https://jwt.io/)
-- [Supabase Documentation](https://supabase.io/docs)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Dokumentasi PostgreSQL](https://www.postgresql.org/docs/)
 
-### 12.3 Document History
+### 10.3 Riwayat Dokumen
 
-| Version | Date | Changes              | Author             |
-| ------- | ---- | -------------------- | ------------------ |
-| 1.0     | 2024 | Initial PRD creation | Hendri Christianto |
+| Versi | Tanggal | Perubahan | Penulis |
+|-------|---------|-----------|---------|
+| 1.0 | 2024 | Draf PRD awal (masih menyebut katalog buku & fitur Supabase fiktif) | Hendri Christianto |
+| 1.1 | 13 Sep 2026 | Ditulis ulang: hapus semua referensi katalog buku/Supabase, samakan dengan API yang sesungguhnya, dialihbahasakan ke Indonesia | — |
+| 1.2 | 13 Sep 2026 | Koreksi: frontend ternyata ada (repo terpisah), bukan "tidak ada frontend" | — |
 
 ---
 
-**Document Status**: Active Development
-**Next Review Date**: Weekly during development phase
-**Stakeholders**: Development Team, Product Owner
+**Status Dokumen**: Historis / Baseline
+**Requirement Aktif**: [PRD V2.0](./PRD_Script_Labs_V2.md)
