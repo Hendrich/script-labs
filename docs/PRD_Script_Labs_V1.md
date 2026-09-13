@@ -1,4 +1,4 @@
-﻿# Product Requirements Document (PRD)
+﻿# Product Requirements Document (PRD) - Version 1.0 (Historical Baseline)
 
 ## Script Labs Application
 
@@ -7,7 +7,8 @@
 - **Version**: 1.0
 - **Date**: 2024
 - **Author**: Hendri Christianto
-- **Status**: Active Development
+- **Status**: Historical / Superseded — kept for context only.
+- **Canonical current requirements**: see [PRD V2.0](./PRD_Script_Labs_V2.md). This V1 document describes the original MVP scope; some technical details below (database provider, hosting) were later corrected in V2 to match what was actually built and deployed.
 
 ---
 
@@ -15,13 +16,12 @@
 
 ### 1.1 Product Overview
 
-Script Labs App adalah aplikasi web full-stack untuk manajemen katalog buku pribadi dengan sistem autentikasi yang aman. Aplikasi ini memungkinkan pengguna untuk mendaftar, login, dan mengelola koleksi buku mereka dengan operasi CRUD (Create, Read, Update, Delete).
+Script Labs App adalah REST API untuk manajemen katalog "lab" (record dengan `title` + `description`) milik user, dengan sistem autentikasi JWT. Aplikasi ini dipakai sebagai **API latihan untuk QA** — bukan produk SaaS produksi — sehingga QA dapat mendaftar, login, dan melakukan operasi CRUD (Create, Read, Update, Delete) untuk keperluan penulisan test case, automation, dan performance testing.
 
 ### 1.2 Business Objectives
 
-- Menyediakan platform yang mudah digunakan untuk mengelola koleksi buku pribadi
-- Implementasi best practices dalam pengembangan web full-stack
-- Demonstrasi integrasi teknologi modern (Node.js, Express, PostgreSQL, JWT, Supabase)
+- Menyediakan API nyata (bukan mock) yang mudah dipakai untuk latihan QA: test case design, automation, dan performance testing
+- Implementasi best practices dalam pengembangan REST API (Node.js, Express, PostgreSQL, JWT)
 - Pembelajaran dan portfolio development
 
 ### 1.3 Success Metrics
@@ -111,12 +111,11 @@ Frontend (HTML/CSS/JS) â†” Backend API (Node.js/Express) â†” Database 
 
 ### 4.2 Technology Stack
 
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Backend**: Node.js, Express.js
-- **Database**: PostgreSQL (via Supabase)
+- **Backend**: Node.js, Express.js (API only — no frontend is served by this repository)
+- **Database**: Self-hosted PostgreSQL
 - **Authentication**: JWT (JSON Web Tokens)
 - **ORM/Database Client**: pg (node-postgres)
-- **Security**: bcryptjs for password hashing
+- **Security**: bcrypt for password hashing
 - **CORS**: cors middleware
 - **Environment**: dotenv
 
@@ -126,35 +125,47 @@ Frontend (HTML/CSS/JS) â†” Backend API (Node.js/Express) â†” Database 
 
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - Client-side token discard (stateless)
+- `GET /api/auth/me` - Get current authenticated user's profile
+- `POST /api/auth/verify-token` - Verify a JWT is still valid
 
 #### lab Endpoints (Protected)
 
-- `GET /api/labs` - Get all user's labs
+- `GET /api/labs` - Get all user's labs (paginated, optional `search`)
+- `GET /api/labs/search` - Search user's labs (paginated, `q` param)
+- `GET /api/labs/:id` - Get a single lab
 - `POST /api/labs` - Add new lab
 - `PUT /api/labs/:id` - Update lab
 - `DELETE /api/labs/:id` - Delete lab
 
+See [PRD V2.0, Section 3](./PRD_Script_Labs_V2.md#3-functional-requirements) for the full, current request/response contract for each endpoint.
+
 ### 4.4 Database Schema
 
 ```sql
--- Users table (managed by Supabase Auth)
-auth.users (
-  id UUID PRIMARY KEY,
-  email VARCHAR UNIQUE,
-  encrypted_password VARCHAR,
-  created_at TIMESTAMP
-)
-
--- labs table
-public.labs (
+-- users table (self-hosted PostgreSQL, see database/schema_pg.sql)
+CREATE TABLE users (
   id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  user_id UUID REFERENCES auth.users(id),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(50) NOT NULL DEFAULT 'user',
+  status VARCHAR(50) NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
-)
+);
+
+-- labs table
+CREATE TABLE labs (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 ```
+
+> Note: `id` values are plain auto-incrementing integers (`SERIAL`), not UUIDs, and there is no `author`/`isbn`/`rating` field — a lab only has `title` and `description`.
 
 ---
 
@@ -269,10 +280,10 @@ public.labs (
 
 ### 8.2 Production Environment
 
-- **Hosting**: Render.com (configured via .render.yaml)
-- **Database**: Supabase PostgreSQL
-- **Environment Variables**: Secure environment configuration
-- **SSL**: HTTPS enforced
+- **Hosting**: Vultr VPS (PM2 process manager + Nginx reverse proxy) — see [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+- **Database**: Self-hosted PostgreSQL on the same VPS
+- **Environment Variables**: Secure environment configuration (`.env`, never committed)
+- **SSL**: HTTPS enforced via Nginx + Let's Encrypt (certbot)
 
 ### 8.3 CI/CD Pipeline
 

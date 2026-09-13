@@ -1,426 +1,195 @@
-﻿# ðŸš€ Script Labs App - Deployment Guide
+# 🚀 Script Labs App - Deployment Guide
 
-## Enhanced Version with Security & Best Practices
+## Matches the Actual Production Setup (Vultr + PM2 + Nginx + self-hosted PostgreSQL)
 
-### ðŸ“‹ Overview
+### 📋 Overview
 
-Panduan lengkap untuk deploy Script Labs App yang telah ditingkatkan dengan security middleware, error handling, validation, dan performance optimization.
+This guide replaces an earlier draft that described deploying to Render/Heroku/Vercel with a Supabase database. The app is actually deployed on a **Vultr VPS**, running PostgreSQL locally on the same machine, managed by **PM2**, fronted by **Nginx**. See [README.md](../README.md) for the condensed version this guide expands on.
 
 ---
 
-## ðŸ”§ Prerequisites
-
-### System Requirements
+## 🔧 Prerequisites
 
 - **Node.js**: >= 18.0.0
 - **npm**: >= 8.0.0
-- **PostgreSQL**: >= 12.0 (via Supabase recommended)
-- **Git**: untuk version control
-
-### Required Services
-
-- **Supabase Account**: untuk authentication dan database
-- **Hosting Platform**: Render.com (recommended), Heroku, atau Vercel
+- **PostgreSQL**: >= 12 (self-hosted — no managed provider required)
+- A VPS (this project uses Vultr; any Ubuntu/Debian VPS works the same way)
 
 ---
 
-## ðŸ“¦ Installation & Setup
+## 📦 Local Development Setup
 
-### 1. Clone Repository
+### 1. Clone & Install
 
 ```bash
-git clone https://github.com/yourusername/script-labs-app.git
-cd script-labs-app
+git clone https://github.com/Hendrich/script-labs.git
+cd script-labs
+npm install
 ```
 
-### 2. Install Dependencies
+### 2. Database
 
 ```bash
-# Install production dependencies
-npm install
-
-# For development with additional tools
-npm install --include=dev
+psql -U postgres -c "CREATE DATABASE scriptlabs_db;"
+psql -U postgres -c "CREATE USER scriptlabs_user WITH PASSWORD 'your_password';"
+psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE scriptlabs_db TO scriptlabs_user;"
+psql "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
 ```
 
 ### 3. Environment Configuration
 
 ```bash
-# Copy environment template
 cp .env.template .env
-
-# Edit .env with your actual values
-nano .env
 ```
 
-### Required Environment Variables
+Minimum required values:
 
 ```env
-# Server
 PORT=3000
-NODE_ENV=production
-
-# Database
-DATABASE_URL=postgresql://postgres:password@db.supabase.co:5432/postgres
-
-# JWT
-JWT_SECRET=your_super_secret_jwt_key_here
-JWT_EXPIRES_IN=24h
-
-# Supabase
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Frontend
-FRONTEND_URL=https://your-domain.com
-
-# CORS
-CORS_ORIGINS=https://your-domain.com
-
-# Security (optional)
-ENABLE_RATE_LIMITING=true
-ENABLE_REQUEST_LOGGING=true
-ENABLE_SECURITY_HEADERS=true
+NODE_ENV=development
+DATABASE_URL=postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db
+JWT_SECRET=<a long random string>
+FRONTEND_URL=http://localhost:5173
 ```
 
----
-
-## ðŸŽ¯ Development Setup
-
-### 1. Database Setup (Supabase)
-
-1. Create new Supabase project
-2. Run database migration:
-
-```sql
--- labs table
-CREATE TABLE labs (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Enable RLS (Row Level Security)
-ALTER TABLE labs ENABLE ROW LEVEL SECURITY;
-
--- Create policies
-CREATE POLICY "Users can view own labs" ON labs
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own labs" ON labs
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own labs" ON labs
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own labs" ON labs
-  FOR DELETE USING (auth.uid() = user_id);
-```
-
-### 2. Start Development Server
+### 4. Run
 
 ```bash
-# Start with nodemon (auto-restart)
-npm run dev
-
-# Or start normally
+npm run dev     # nodemon, auto-restart
+# or
 npm start
 ```
 
-### 3. Verify Installation
-
-- **Health Check**: http://localhost:3000/health
-- **API Stats**: http://localhost:3000/api/stats (development only)
-- **Frontend**: http://localhost:3000
+Verify: `http://localhost:3000/health` and `http://localhost:3000/api-docs`.
 
 ---
 
-## ðŸŒ Production Deployment
+## 🌐 Production Deployment (Vultr VPS)
 
-### Option 1: Render.com (Recommended)
-
-#### 1. Prepare Repository
+### 1. Provision & Clone
 
 ```bash
-# Ensure .render.yaml is present and configured
-cat .render.yaml
+cd /root
+git clone https://github.com/Hendrich/script-labs.git
+cd script-labs
+npm install
 ```
 
-#### 2. Deploy to Render
+### 2. PostgreSQL on the VPS
 
-1. Connect GitHub repository to Render
-2. Set environment variables in Render dashboard
-3. Deploy automatically on git push
-
-#### 3. Configure Environment Variables in Render
-
+```sql
+CREATE DATABASE scriptlabs_db;
+CREATE USER scriptlabs_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE scriptlabs_db TO scriptlabs_user;
+ALTER DATABASE scriptlabs_db OWNER TO scriptlabs_user;
 ```
-PORT=3000
+
+```bash
+psql "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" -f database/schema_pg.sql
+```
+
+### 3. Environment Variables (`.env` on the VPS)
+
+```env
+PORT=5000
 NODE_ENV=production
-DATABASE_URL=your_supabase_connection_string
-JWT_SECRET=your_production_jwt_secret
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_ANON_KEY=your_production_anon_key
-FRONTEND_URL=https://your-app-name.onrender.com
-CORS_ORIGINS=https://your-app-name.onrender.com
-ENABLE_RATE_LIMITING=true
-ENABLE_REQUEST_LOGGING=false
-ENABLE_SECURITY_HEADERS=true
+DATABASE_URL=postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db
+JWT_SECRET=<strong production secret, 64+ chars>
+JWT_EXPIRES_IN=24h
+FRONTEND_URL=https://labs.hendri.me
 ```
 
-### Option 2: Heroku
-
-#### 1. Install Heroku CLI
+### 4. Run with PM2
 
 ```bash
-# Install Heroku CLI
-# Create Heroku app
-heroku create your-app-name
-
-# Set environment variables
-heroku config:set NODE_ENV=production
-heroku config:set DATABASE_URL=your_database_url
-heroku config:set JWT_SECRET=your_jwt_secret
-# ... add all other env vars
-
-# Deploy
-git push heroku main
+cd /root/script-labs
+pm2 start backend/server.js --name script-labs-api
+pm2 save
+pm2 status
+curl http://localhost:5000/health
 ```
 
-### Option 3: Vercel (Frontend + Serverless Functions)
+### 5. Nginx Reverse Proxy
 
-#### 1. Install Vercel CLI
+```nginx
+server {
+    listen 80;
+    server_name api-script-labs.hendri.me;
 
-```bash
-npm i -g vercel
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
 
-# Deploy
-vercel
-
-# Set environment variables in Vercel dashboard
-```
-
----
-
-## ðŸ”’ Security Checklist
-
-### Pre-Deployment Security
-
-- [ ] All environment variables set properly
-- [ ] JWT_SECRET is strong and unique (64+ characters)
-- [ ] Database credentials are secure
-- [ ] CORS origins are properly configured
-- [ ] Rate limiting is enabled for production
-- [ ] Security headers are enabled
-
-### Post-Deployment Verification
-
-```bash
-# Test health endpoint
-curl https://your-app.com/health
-
-# Test rate limiting
-for i in {1..10}; do curl https://your-app.com/api/labs; done
-
-# Check security headers
-curl -I https://your-app.com
-```
-
----
-
-## ðŸ“Š Monitoring & Maintenance
-
-### Health Monitoring
-
-```bash
-# Set up periodic health checks
-curl https://your-app.com/health
-
-# Monitor API performance (if stats enabled)
-curl https://your-app.com/api/stats
-```
-
-### Log Monitoring
-
-- Check application logs in hosting platform dashboard
-- Monitor error rates and response times
-- Set up alerts for critical errors
-
-### Database Maintenance
-
-- Monitor Supabase usage and performance
-- Set up automated backups
-- Review and optimize queries periodically
-
----
-
-## ðŸ› Troubleshooting
-
-### Common Issues
-
-#### 1. Environment Variables Not Loading
-
-```bash
-# Check if .env file exists and is properly formatted
-cat .env
-
-# Verify environment variables are set
-node -e "console.log(process.env.DATABASE_URL)"
-```
-
-#### 2. Database Connection Issues
-
-```bash
-# Test database connection
-node -e "
-const { Pool } = require('pg');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-pool.query('SELECT NOW()', (err, res) => {
-  console.log(err ? err : res.rows[0]);
-  pool.end();
-});
-"
-```
-
-#### 3. CORS Issues
-
-- Verify FRONTEND_URL and CORS_ORIGINS are correctly set
-- Check browser developer tools for CORS errors
-- Ensure Supabase CORS settings are configured
-
-#### 4. Rate Limiting Issues
-
-```bash
-# Temporarily disable rate limiting for testing
-# Set ENABLE_RATE_LIMITING=false in environment
-```
-
-### Performance Issues
-
-- Enable request logging to identify slow endpoints
-- Monitor API stats endpoint in development
-- Use browser developer tools to check frontend performance
-
----
-
-## ðŸ“ˆ Performance Optimization
-
-### Backend Optimizations
-
-- Enable connection pooling for database
-- Implement response caching for static data
-- Optimize database queries with indexes
-- Use compression middleware
-
-### Frontend Optimizations
-
-- Minimize HTTP requests
-- Implement lazy loading for images
-- Use service workers for caching
-- Optimize bundle size
-
----
-
-## ðŸ”„ Continuous Integration/Deployment
-
-### GitHub Actions Example
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy to Render
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: "18"
-      - run: npm ci
-      - run: npm test
-      - name: Deploy to Render
-        # Add Render deployment step
-```
-
-### Pre-deployment Checks
-
-```bash
-# Run tests (when implemented)
-npm test
-
-# Lint code
-npm run lint
-
-# Security audit
-npm audit
-
-# Check for outdated dependencies
-npm outdated
-```
-
----
-
-## ðŸ“š API Documentation
-
-### Endpoints Overview
-
-- **Health**: `GET /health`
-- **Auth**: `POST /api/auth/login`, `POST /api/auth/register`
-- **labs**: `GET|POST|PUT|DELETE /api/labs`
-- **Stats**: `GET /api/stats` (dev only)
-
-### Authentication
-
-All protected endpoints require:
-
-```
-Authorization: Bearer <supabase_access_token>
-```
-
-### Error Handling
-
-Standardized error response format:
-
-```json
-{
-  "success": false,
-  "error": {
-    "message": "Error description",
-    "code": "ERROR_CODE"
-  },
-  "timestamp": "2024-01-01T00:00:00Z"
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
----
+```bash
+ln -s /etc/nginx/sites-available/script-labs-api /etc/nginx/sites-enabled/
+nginx -t
+systemctl reload nginx
+```
 
-## ðŸ“ž Support & Maintenance
+> The `X-Forwarded-For` header set here is what the rate limiter's `keyGenerator` reads (see `backend/middlewares/rateLimiter.js`) — without it, all traffic through Nginx would appear to originate from `127.0.0.1`/`::1` to the app.
 
-### Regular Maintenance Tasks
+### 6. SSL
 
-- [ ] Update dependencies monthly
-- [ ] Review security vulnerabilities
-- [ ] Monitor application performance
-- [ ] Backup database regularly
-- [ ] Review and rotate JWT secrets
-
-### Getting Help
-
-- Check application logs first
-- Use health endpoint to verify system status
-- Review this documentation
-- Check API documentation for endpoint details
+```bash
+certbot --nginx -d api-script-labs.hendri.me
+curl https://api-script-labs.hendri.me/health
+```
 
 ---
 
-**Last Updated**: 2024
-**Version**: Enhanced v1.0
-**Support**: Check GitHub issues for common problems
+## 🔒 Pre-Deployment Security Checklist
+
+- [ ] `JWT_SECRET` is strong, unique, and not committed to git
+- [ ] `.env` is present on the server and not committed to git
+- [ ] `DATABASE_URL` credentials are not the Postgres defaults
+- [ ] CORS `FRONTEND_URL` points to the real frontend origin
+- [ ] Rate limiting is confirmed active on `/api/auth/register` and `/api/auth/login` (`curl` them 6 times in a row and expect a 429 on the 6th)
+- [ ] `NODE_ENV=production` (this disables the rate-limiter bypass that only applies when `NODE_ENV=test`)
+
+---
+
+## 💾 Backup
+
+```bash
+mkdir -p /root/backups/script-labs
+pg_dump "postgresql://scriptlabs_user:your_password@localhost:5432/scriptlabs_db" > /root/backups/script-labs/scriptlabs_backup.sql
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### 500 on login/register
+
+Check `pm2 logs script-labs-api` — the actual database error is printed server-side even though the client only sees a generic message (see `backend/routes/authRoutes.js`). The most common cause is the `users`/`labs` table schema not matching `database/schema_pg.sql` (e.g. a stale table created from an older schema draft).
+
+### CORS errors
+
+Confirm `FRONTEND_URL` in `.env` matches the calling origin exactly, then `pm2 restart script-labs-api --update-env`.
+
+### Rate limiting seems to not apply / applies to the wrong IP
+
+Check that Nginx is actually forwarding `X-Forwarded-For` (see the config above) — otherwise every client behind the proxy is rate-limited as a single IP.
+
+### Performance/load testing considerations
+
+Before running load or performance tests against this deployment, be aware this is a single small VPS running the API, Nginx, and PostgreSQL together, with no autoscaling and a flat monthly billing plan (not pay-per-request). Heavy sustained testing can affect real users of the same instance and, in extreme/attack-level cases, bandwidth overage — prefer a separate staging VPS for performance testing when possible.
+
+---
+
+## 📚 Endpoint Reference
+
+See [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md) for the full, current endpoint list and contracts.
+
+---
+
+**Last Updated**: 13 September 2026
+**Status**: Current / Authoritative

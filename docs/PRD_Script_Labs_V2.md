@@ -1,13 +1,14 @@
-﻿# Product Requirements Document (PRD) - Version 2.0
+# Product Requirements Document (PRD) - Version 2.0
 
-## Script Labs Application - Enhanced Features
+## Script Labs App — QA Practice API
 
 ### Document Information
 
-- **Version**: 2.0
-- **Date**: July 29, 2025
-- **Status**: Enhancement Phase
-- **Previous Version**: [PRD v1.0](./PRD-lab-Catalog-App.md)
+- **Version**: 2.0 (rewritten to match the actual shipped API)
+- **Date**: 13 September 2026
+- **Status**: Current / Authoritative
+- **Purpose**: This PRD is the **source of truth for expected behavior**. It is written so a QA engineer can derive test cases (positive, negative, boundary, security, performance) directly from it and run them against the real API.
+- **Related**: [PRD V1.0](./PRD_Script_Labs_V1.md) (historical baseline), [API Documentation](./API_DOCUMENTATION_V2.md), [Database Architecture](./DATABASE_ARCHITECTURE_V2.md)
 
 ---
 
@@ -15,593 +16,276 @@
 
 ### 1.1 Product Overview
 
-Script Labs App V2 adalah peningkatan dari aplikasi manajemen katalog buku dengan penambahan fitur pencarian & filter buku, sistem forgot password yang aman, dan migrasi penuh ke Supabase sebagai backend database utama.
+Script Labs is a small, self-hosted REST API (Node.js/Express + PostgreSQL) built to give QA professionals a **realistic target to practice on** — not a production SaaS product. It exposes user authentication (JWT-based) and a "labs" resource with full CRUD + search, deployed on a real server (Vultr VPS) so it behaves like a genuine environment: real network latency, real rate limits, real error paths.
 
-### 1.2 Business Objectives
+### 1.2 Why this app exists (Business Objectives)
 
-- **Enhanced User Experience**: Pencarian dan filter buku yang powerful untuk koleksi besar
-- **Security Enhancement**: Sistem forgot password yang aman dengan email verification
-- **Infrastructure Modernization**: Full migration ke Supabase untuk scalability dan reliability
-- **Performance Improvement**: Query optimization dengan Supabase PostgreSQL
+- Give QA learners a **safe, low-stakes API** to practice the full QA skill path on:
+  1. **Test case design** — functional, negative, boundary, and security test cases derived from this PRD.
+  2. **Test automation** — scripting API tests (Postman/Newman, REST-assured, Playwright API testing, etc.) against a real deployed backend.
+  3. **Performance testing** — running load/stress tests (k6, JMeter, Artillery) against a real, resource-constrained VPS and observing real bottlenecks (rate limits, DB connection pool limits, CPU-bound password hashing).
+- Provide a codebase simple enough to read end-to-end, so learners can eventually cross-reference "expected" (this PRD) vs. "actual" (the running API) and practice defect reporting.
 
-### 1.3 Success Metrics V2
+### 1.3 Success Metrics
 
-- Search response time < 200ms untuk 1000+ labs
-- Password reset success rate > 95%
-- Zero downtime migration ke Supabase
-- User engagement increase 40% dengan enhanced search features
-
----
-
-## 2. What's New in Version 2.0
-
-### 2.1 New Features Summary
-
-| Feature                | Priority | Status       | Impact |
-| ---------------------- | -------- | ------------ | ------ |
-| Search & Filter labs   | High     | ï¿½ Planned  | High   |
-| Forgot Password System | High     | ðŸ“‹ Planned | Medium |
-| Supabase Migration     | High     | ðŸ“‹ Planned | High   |
-
-### 2.2 Migration Rationale
-
-**From Local PostgreSQL to Supabase:**
-
-- **Scalability**: Auto-scaling database
-- **Authentication**: Built-in auth with email verification
-- **Real-time**: Real-time subscriptions capability
-- **Managed Service**: Reduced operational overhead
-- **Security**: Enterprise-grade security features
+- A QA learner can write a complete test suite (happy path + negative + edge cases) for every endpoint in this document without needing to read the source code.
+- Automated test suites (Postman/Newman or code-based) can run against the deployed API without manual setup beyond registering a test user.
+- Performance test scripts can be pointed at the deployed API and produce meaningful, reproducible latency/error-rate numbers.
 
 ---
 
-## 3. Enhanced Functional Requirements
+## 2. Scope
 
-### 3.1 Search & Filter System
+### 2.1 In Scope
 
-| Feature ID | Feature Name           | Priority | Description                       |
-| ---------- | ---------------------- | -------- | --------------------------------- |
-| SEARCH-001 | Basic Text Search      | High     | Search labs by title and author   |
-| SEARCH-002 | Filter by Title/Author | High     | Filter labs by title or author    |
-| SEARCH-003 | Sort Options           | High     | Sort by title, author, date added |
+- User registration, login, logout, session/token verification (JWT, stateless).
+- CRUD + search for a single resource type: **"lab"** (`title`, `description`, owned by a user).
+- Rate limiting on authentication endpoints.
+- Input validation and consistent error responses.
 
-#### 3.1.1 Search API Specifications
+### 2.2 Out of Scope (explicitly NOT implemented — do not write test cases assuming these exist)
 
-```javascript
-// GET /api/labs/search
-Query Parameters:
-- q: string (search query for title/author)
-- sort_by: enum (title|author|created_at)
-- sort_order: enum (asc|desc)
-- page: number (pagination)
-- limit: number (results per page, max 50)
+- No frontend/UI — this is an API-only product. Any UI-based test cases must target a separate frontend project, not this repository.
+- No forgot-password / email-based password reset flow.
+- No third-party auth (Google/Supabase/OAuth) — authentication is local email+password only.
+- No "sort_by" / "sort_order" / category / rating / ISBN fields on labs — a lab only has `title` and `description`.
+- No bulk operations, no admin/metrics endpoints, no user statistics endpoints.
 
-Response:
-{
-  "success": true,
-  "data": {
-    "labs": [...],
-    "pagination": {
-      "current_page": 1,
-      "total_pages": 10,
-      "total_results": 95,
-      "per_page": 10
-    },
-    "search_query": "javascript"
-    }
-  },
-  "performance": {
-    "query_time_ms": 45,
-    "results_count": 10
-  }
-}
-```
-
-### 3.2 Forgot Password System
-
-| Feature ID | Feature Name           | Priority | Description                               |
-| ---------- | ---------------------- | -------- | ----------------------------------------- |
-| FORGOT-001 | Password Reset Request | High     | User requests password reset via email    |
-| FORGOT-002 | Email Verification     | High     | Send secure reset link to user email      |
-| FORGOT-003 | Token Validation       | High     | Validate reset token and expiration       |
-| FORGOT-004 | Password Update        | High     | Secure password update with new hash      |
-| FORGOT-005 | Reset Notification     | Medium   | Email confirmation after successful reset |
-| FORGOT-006 | Rate Limiting          | High     | Prevent abuse with rate limiting          |
-
-#### 3.2.1 Forgot Password API Flow
-
-```javascript
-// 1. Request Password Reset
-POST /api/auth/forgot-password
-{
-  "email": "user@example.com"
-}
-
-// 2. Verify Reset Token
-GET /api/auth/reset-password/:token
-
-// 3. Set New Password
-POST /api/auth/reset-password
-{
-  "token": "secure_reset_token",
-  "new_password": "new_secure_password",
-  "confirm_password": "new_secure_password"
-}
-```
+> QA note: earlier drafts of this PRD (and other docs in this repository) referenced Supabase, forgot-password, book ratings/ISBN, and other fields. Those were aspirational drafts that were **never implemented**. This section exists specifically so QA does not write test cases against features that don't exist in the real API.
 
 ---
 
-## 4. Technical Architecture V2
+## 3. Functional Requirements
 
-### 4.1 Enhanced Architecture
+Each requirement below includes the field-level rules needed to design equivalence classes and boundary values.
 
-```
-Frontend (Enhanced UI) â†” Backend API (Node.js/Express) â†” Supabase (PostgreSQL + Auth)
-                        â†•                               â†•
-                   JWT + Supabase Auth           Real-time Updates
-                        â†•                               â†•
-                   Email Service (Supabase)      File Storage (Future)
-```
+### 3.1 Authentication
 
-### 4.2 Technology Stack Updates
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| AUTH-001 | A visitor can register with a unique `email` and a `password`. | High |
+| AUTH-002 | A registered user can log in with `email` + `password` and receive a JWT. | High |
+| AUTH-003 | Every protected endpoint must reject requests without a valid `Authorization: Bearer <token>` header. | High |
+| AUTH-004 | Passwords must never be stored or returned in plaintext. | High |
+| AUTH-005 | A JWT must expire (default: 24 hours) and be rejected once expired. | Medium |
+| AUTH-006 | A client can call a "logout" endpoint; since auth is stateless, this only needs to signal success — the client is responsible for discarding the token. | Low |
+| AUTH-007 | An authenticated user can fetch their own profile (`/me`) and verify their own token (`/verify-token`). | Medium |
+| AUTH-008 | Repeated failed login/registration attempts from the same IP must be throttled. | High |
 
-**Added/Updated:**
+#### 3.1.1 Field Rules
 
-- **Database**: Supabase PostgreSQL (replacing local PostgreSQL)
-- **Authentication**: Supabase Auth + JWT hybrid approach
-- **Email Service**: Supabase built-in email (or SendGrid integration)
-- **Search**: PostgreSQL full-text search with ts_vector
-- **Real-time**: Supabase real-time subscriptions (future feature)
+| Field | Rule |
+|-------|------|
+| `email` | Required. Must be a syntactically valid email address. Case-insensitive for matching (e.g. `A@B.com` and `a@b.com` are the same account). |
+| `password` | Required. Minimum 6 characters, maximum 128 characters. No complexity requirement (no forced uppercase/number/symbol). |
 
-**Maintained:**
+#### 3.1.2 Endpoint Requirements
 
-- **Frontend**: HTML5, CSS3, Enhanced JavaScript
-- **Backend**: Node.js, Express.js (enhanced middleware)
-- **Security**: bcryptjs, CORS, Helmet
-- **Testing**: Jest with enhanced coverage
+**`POST /api/auth/register`**
 
-### 4.3 Database Schema V2
+- **Given** a valid, not-yet-registered `email` and a `password` between 6-128 characters
+  **When** the client submits registration
+  **Then** the API returns **201 Created** with a JWT and the created user's `id`, `email`, `role` (default `"user"`), and `status` (default `"active"`). The response must never include the password or its hash.
+- **Given** an `email` that is already registered (comparison is case-insensitive)
+  **When** the client submits registration
+  **Then** the API returns **409 Conflict** with an `EMAIL_EXISTS` error code, and no new account is created.
+- **Given** a missing/malformed `email` or a `password` shorter than 6 or longer than 128 characters
+  **When** the client submits registration
+  **Then** the API returns **400 Bad Request** describing which field(s) failed validation, and no account is created.
+- **Given** more than 5 registration attempts from the same IP within 15 minutes
+  **When** the client submits another registration
+  **Then** the API returns **429 Too Many Requests**.
 
-```sql
--- Enhanced labs table
-CREATE TABLE public.labs (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  title VARCHAR(500) NOT NULL,
-  author VARCHAR(300) NOT NULL,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+**`POST /api/auth/login`**
 
--- Indexes for performance
-CREATE INDEX idx_labs_user_id ON public.labs(user_id);
-CREATE INDEX idx_labs_title ON public.labs(title);
-CREATE INDEX idx_labs_author ON public.labs(author);
+- **Given** correct `email` + `password` for an active account
+  **When** the client logs in
+  **Then** the API returns **200 OK** with a JWT and the user's `id`, `email`, `role`, `status`.
+- **Given** an `email` that does not exist, OR a correct `email` with a wrong `password`
+  **When** the client logs in
+  **Then** the API returns **401 Unauthorized** with the **same generic message** in both cases (e.g. "Invalid email or password") — the API must never reveal whether the email exists (anti user-enumeration).
+- **Given** a correct `email` + `password` for an account whose `status` is `"locked"`
+  **When** the client logs in
+  **Then** the API returns **403 Forbidden**, not 401.
+- **Given** missing/malformed `email` or `password`
+  **When** the client logs in
+  **Then** the API returns **400 Bad Request**.
+- **Given** more than 5 login attempts from the same IP within 15 minutes
+  **When** the client logs in again
+  **Then** the API returns **429 Too Many Requests**, regardless of whether the credentials in that 6th attempt are correct.
 
--- Password reset tokens table
-CREATE TABLE public.password_reset_tokens (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  token VARCHAR(255) UNIQUE NOT NULL,
-  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  used BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+**`POST /api/auth/logout`**
 
-CREATE INDEX idx_password_reset_tokens_token ON public.password_reset_tokens(token);
-CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens(user_id);
-CREATE INDEX idx_password_reset_tokens_token ON public.password_reset_tokens(token);
-CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens(user_id);
-```
+- **Given** any request, with or without a token
+  **When** the client calls logout
+  **Then** the API returns **200 OK** confirming logout. (Stateless JWT — server holds no session to invalidate; this endpoint exists purely as a client-facing confirmation.)
 
----
+**`GET /api/auth/me`**
 
-## 5. API Specifications V2
+- **Given** a valid, unexpired token
+  **When** the client requests their profile
+  **Then** the API returns **200 OK** with the user's `id`, `email`, `role`, `status`, `created_at`.
+- **Given** a missing, malformed, or expired token
+  **When** the client requests their profile
+  **Then** the API returns **401 Unauthorized**.
 
-### 5.1 Enhanced lab Endpoints
+**`POST /api/auth/verify-token`**
 
-```javascript
-// Search labs by title/author
-GET /api/labs/search?q={query}&sort_by={field}&page={num}
+- **Given** a valid, unexpired token
+  **When** the client verifies it
+  **Then** the API returns **200 OK** with `valid: true`, the `user_id`, `email`, and the token's expiry.
+- **Given** a missing, malformed, or expired token
+  **When** the client verifies it
+  **Then** the API returns **401 Unauthorized**.
 
-// Standard CRUD operations (existing)
-GET /api/labs
-POST /api/labs
-PUT /api/labs/:id
-DELETE /api/labs/:id
+### 3.2 Lab Management (CRUD)
 
-// Update lab (same as V1)
-PUT /api/labs/:id
-{
-  "title": "lab Title",
-  "author": "Author Name"
-  "category": "Technical",
-  "publication_year": 2024,
-  "isbn": "978-1234567890",
-  "rating": 5,
-  "reading_status": "read",
-  "notes": "Excellent lab about...",
-  "cover_url": "https://example.com/cover.jpg"
-}
+All endpoints under `/api/labs` require a valid `Authorization: Bearer <token>` header. A user may only see and modify their **own** labs.
 
-// Bulk operations (future)
-POST /api/labs/bulk
-{
-  "action": "update_status",
-  "lab_ids": ["uuid1", "uuid2"],
-  "data": { "reading_status": "read" }
-}
-```
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| LAB-001 | An authenticated user can list their own labs, paginated. | High |
+| LAB-002 | An authenticated user can retrieve one of their own labs by ID. | High |
+| LAB-003 | An authenticated user can create a new lab with a `title` and `description`. | High |
+| LAB-004 | An authenticated user can update the `title` and/or `description` of their own lab. | High |
+| LAB-005 | An authenticated user can delete their own lab. | High |
+| LAB-006 | An authenticated user can search their own labs by keyword in `title` or `description`, paginated. | Medium |
+| LAB-007 | A user must never be able to view, edit, or delete another user's lab, even by guessing its numeric ID. | High |
+| LAB-008 | Creating a lab with the exact same `title` and `description` as an existing lab (for the same user) must be rejected as a duplicate. | Medium |
 
-```javascript
-// New endpoint on Enhance V2
-// GET /api/labs/search
-Query Parameters:
-- q: string (search query for title/author)
-- page: number (pagination, default: 1)
-- limit: number (results per page, default: 10, max: 100)
+#### 3.2.1 Field Rules
 
-Response:
-{
-  "success": true,
-  "data": [
-    { "id": 14, "title": "Atomic Habits", "author": "James Clear", "user_id": "..." }
-  ],
-  "pagination": { "page": 1, "limit": 10, "total": 1, "totalPages": 1 },
-  "search_query": "atomic",
-  "timestamp": "2025-07-31T10:00:00.000Z"
-}
-```
+| Field | Rule |
+|-------|------|
+| `title` | Required on create. 1-255 characters (after trimming whitespace). |
+| `description` | Required on create. 1-1000 characters (after trimming whitespace). |
+| `id` (path param) | Must be a positive integer. |
+| `page` (query param) | Positive integer, default `1`. |
+| `limit` (query param) | Positive integer, default `10` (list) or `10` (search), capped at `100`. |
 
-### 5.2 Password Reset Endpoints
+#### 3.2.2 Endpoint Requirements
 
-```javascript
-// 1. Initiate password reset
-POST /api/auth/forgot-password
-{
-  "email": "user@example.com"
-}
-Response: {
-  "success": true,
-  "message": "Password reset email sent if account exists",
-  "rate_limit": {
-    "remaining_attempts": 2,
-    "reset_time": "2025-07-29T10:00:00Z"
-  }
-}
+**`GET /api/labs`**
 
-// 2. Validate reset token
-GET /api/auth/reset-password/:token
-Response: {
-  "success": true,
-  "data": {
-    "token_valid": true,
-    "expires_at": "2025-07-29T09:00:00Z",
-    "email": "u***@example.com"
-  }
-}
+- **Given** an authenticated user with N labs
+  **When** they call this endpoint with no query params
+  **Then** the API returns **200 OK** with their labs (default 10 per page), ordered newest first, plus pagination metadata (`page`, `limit`, `total`, `totalPages`).
+- **Given** an optional `search` query param
+  **When** provided
+  **Then** the results are filtered to labs whose `title` or `description` contains the search text (case-insensitive).
+- **Given** a `page` or `limit` value that is not a valid positive integer (e.g. text, negative, zero, decimal)
+  **When** the client calls this endpoint
+  **Then** the API must return **400 Bad Request** with a clear validation message — never a 500 error and never a raw database error message.
 
-// 3. Complete password reset
-POST /api/auth/reset-password
-{
-  "token": "secure_reset_token",
-  "new_password": "new_secure_password"
-}
-Response: {
-  "success": true,
-  "message": "Password successfully updated"
-}
-```
+**`GET /api/labs/search`**
 
----
+- Same contract as `GET /api/labs`, but the query parameter is named `q` instead of `search`, and the response includes an `echo` of the search query (`search_query`).
+- **Given** an empty or missing `q`
+  **When** the client searches
+  **Then** the API returns all of the user's labs (paginated), equivalent to `GET /api/labs`.
+- Same validation requirement as above: invalid `page`/`limit` must return **400**, never a 500 or a raw database error.
 
-## 6. Migration Strategy
+**`GET /api/labs/:id`**
 
-### 6.1 Database Migration Plan
+- **Given** an `id` that exists and belongs to the caller
+  **When** the client requests it
+  **Then** the API returns **200 OK** with the lab.
+- **Given** an `id` that does not exist, or exists but belongs to a different user
+  **When** the client requests it
+  **Then** the API returns **404 Not Found** — the response must be identical in both cases (do not leak whether the ID exists but belongs to someone else).
+- **Given** an `id` that is not a positive integer (e.g. `abc`, `-1`, `1.5`)
+  **When** the client requests it
+  **Then** the API returns **400 Bad Request**.
 
-#### Phase 1: Supabase Setup (Week 1)
+**`POST /api/labs`**
 
-```sql
--- 1. Create Supabase project
--- 2. Set up authentication
--- 3. Create enhanced tables
--- 4. Set up Row Level Security (RLS)
+- **Given** a valid `title` (1-255 chars) and `description` (1-1000 chars)
+  **When** the client creates a lab
+  **Then** the API returns **201 Created** with the new lab, including its generated `id`, `created_at`, `updated_at`.
+- **Given** a `title`+`description` pair that is identical to one the same user already has
+  **When** the client tries to create it again
+  **Then** the API returns **409 Conflict**.
+- **Given** a missing `title`, missing `description`, or either field out of length bounds (empty after trim, or over the max)
+  **When** the client creates a lab
+  **Then** the API returns **400 Bad Request** describing the invalid field(s).
 
--- RLS Policies
-ALTER TABLE public.labs ENABLE ROW LEVEL SECURITY;
+**`PUT /api/labs/:id`**
 
-CREATE POLICY "Users can view their own labs" ON public.labs
-  FOR SELECT USING (auth.uid() = user_id);
+- **Given** an owned, existing lab `id` and at least one of `title`/`description` in the body
+  **When** the client updates it
+  **Then** the API returns **200 OK** with the updated lab, and `updated_at` changes.
+- **Given** an empty body (no fields to update)
+  **When** the client attempts an update
+  **Then** the API returns **400 Bad Request**.
+- **Given** an `id` that doesn't exist or isn't owned by the caller
+  **When** the client attempts an update
+  **Then** the API returns **404 Not Found**.
 
-CREATE POLICY "Users can insert their own labs" ON public.labs
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+**`DELETE /api/labs/:id`**
 
-CREATE POLICY "Users can update their own labs" ON public.labs
-  FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own labs" ON public.labs
-  FOR DELETE USING (auth.uid() = user_id);
-```
-
-#### Phase 2: Data Migration (Week 2)
-
-```javascript
-// Migration script
-const migrationScript = `
--- Export existing data
-COPY (
-  SELECT 
-    gen_random_uuid() as id,
-    title,
-    author,
-    user_id,
-    created_at,
-    updated_at
-  FROM old_books_table
-) TO '/tmp/books_export.csv' WITH CSV HEADER;
-
--- Import to Supabase
--- (Use Supabase Dashboard or API)
-`;
-```
-
-#### Phase 3: API Updates (Week 3)
-
-- Update database connection to Supabase
-- Implement new search endpoints
-- Add forgot password functionality
-- Enhanced error handling
-
-### 6.2 Rollback Strategy
-
-- **Database**: Keep old PostgreSQL running for 2 weeks
-- **Code**: Feature flags for new functionality
-- **Data**: Daily backups during migration period
-- **Testing**: Parallel testing on both systems
+- **Given** an owned, existing lab `id`
+  **When** the client deletes it
+  **Then** the API returns **200 OK** confirming deletion, and a subsequent `GET` on that `id` returns 404.
+- **Given** an `id` that doesn't exist or isn't owned by the caller
+  **When** the client attempts to delete it
+  **Then** the API returns **404 Not Found**.
 
 ---
 
-## 7. Enhanced Security Requirements
+## 4. Non-Functional Requirements
 
-### 7.1 Authentication Security
+### 4.1 Security
 
-```javascript
-// Enhanced JWT with Supabase
-const jwtConfig = {
-  // Primary: Supabase JWT
-  supabase: {
-    jwt_secret: process.env.SUPABASE_JWT_SECRET,
-    algorithm: "HS256",
-    expiresIn: "1h",
-  },
-  // Fallback: Custom JWT
-  custom: {
-    jwt_secret: process.env.JWT_SECRET,
-    algorithm: "HS256",
-    expiresIn: "24h",
-  },
-};
-```
+| ID | Requirement |
+|----|-------------|
+| SEC-001 | Passwords must be hashed (never stored or logged in plaintext). |
+| SEC-002 | All state-changing requests (`POST`/`PUT`/`DELETE`) must be rejected if their `Origin`/`Referer` header does not match an allow-listed origin. |
+| SEC-003 | Authentication endpoints must rate-limit by IP to resist brute-force and credential-stuffing attacks. |
+| SEC-004 | Error responses in production must never leak stack traces, raw database error text, or internal file paths. |
+| SEC-005 | A user must never be able to access or modify another user's data through any endpoint. |
 
-### 7.2 Password Reset Security
+### 4.2 Performance
 
-- **Token Expiration**: 1 hour maximum
-- **Single Use**: Tokens become invalid after use
-- **Rate Limiting**: 3 attempts per hour per email
-- **Secure Generation**: Crypto-random tokens (32 bytes)
-- **Email Verification**: Confirm email ownership
+| ID | Requirement | Target |
+|----|-------------|--------|
+| PERF-001 | `GET /api/labs` / `GET /api/labs/search` response time under normal load | < 500 ms (p95) |
+| PERF-002 | `POST /api/auth/login` response time (bcrypt is intentionally CPU-bound; expect this to be the slowest endpoint) | < 1000 ms (p95) |
+| PERF-003 | The API should degrade gracefully (clear error responses, not hangs or crashes) when the configured rate limits or database connection pool are exceeded — this is exactly what performance/load testing on this app should probe. |
 
-### 7.3 Search Security
+### 4.3 Reliability & Error Contract
 
-- **Input Sanitization**: Prevent SQL injection in search queries
-- **Query Limits**: Maximum 100 results per request
-- **Rate Limiting**: 100 searches per minute per user
-- **Permission Check**: Users can only search their own labs
+| ID | Requirement |
+|----|-------------|
+| REL-001 | Every error response must include a human-readable `message`. |
+| REL-002 | Validation errors must return `400`, authentication errors `401`/`403`, not-found `404`, conflicts `409`, rate-limit `429`, and unexpected server failures `500` — status codes must be used consistently across all endpoints. |
+| REL-003 | A malformed or unexpected input must never crash the server or return an unhandled `500` when a `400` is the correct response — this is the single most important rule for negative test-case design against this API. |
 
 ---
 
-## 8. Performance Requirements V2
+## 5. Test Case Design Guidance for QA
 
-### 8.1 Search Performance
+This PRD is intentionally written so each endpoint requirement above maps to a Given/When/Then that can become one or more test cases. Suggested coverage per endpoint:
 
-| Metric               | Target  | Current | Improvement           |
-| -------------------- | ------- | ------- | --------------------- |
-| Search Response Time | < 300ms | N/A     | New Feature           |
-| Results per Page     | 10-50   | N/A     | Configurable          |
-| Concurrent Searches  | 100/min | N/A     | Load Testing Required |
+1. **Happy path** — valid input, assert status code + response shape.
+2. **Boundary values** — for every length/number rule above (e.g. password of exactly 6, 5, 128, 129 characters; page = 0, 1, negative, non-numeric).
+3. **Negative/security** — wrong credentials, locked account, accessing another user's resource by ID, missing/expired/malformed token, malformed JSON body.
+4. **Rate limiting** — exceeding the 5 requests/15 minutes limit on `/register` and `/login`.
+5. **Contract consistency** — compare the actual response shape/status code against what this document specifies; any mismatch is a defect to report.
 
-### 8.2 Database Performance
-
-```sql
--- Performance monitoring queries
-SELECT COUNT(*) FROM labs WHERE user_id = $1;
-
--- Search query performance
-EXPLAIN ANALYZE
-SELECT * FROM labs
-WHERE user_id = $1 AND (title ILIKE $2 OR author ILIKE $3);
-```
+This structure is also what automation suites (Postman/Newman collections, or code-based API tests) should be organized around, and what performance test scripts should target for realistic load scenarios (e.g. sustained traffic on `GET /api/labs`, burst traffic on `POST /api/auth/login` to observe rate-limiting behavior).
 
 ---
 
-## 9. Testing Strategy V2
+## 6. Success Criteria
 
-### 9.1 Enhanced Test Coverage
-
-```javascript
-// Search functionality tests
-describe("lab Search API", () => {
-  test("should return labs matching search query", async () => {
-    const response = await request(app)
-      .get("/api/labs/search?q=javascript")
-      .set("Authorization", `Bearer ${validToken}`)
-      .expect(200);
-
-    expect(response.body.data.labs).toHaveLength(5);
-    expect(response.body.performance.query_time_ms).toBeLessThan(200);
-  });
-
-  test("should handle complex filters", async () => {
-    const response = await request(app)
-      .get("/api/labs/search?category=Technical&year_from=2020&sort_by=rating")
-      .set("Authorization", `Bearer ${validToken}`)
-      .expect(200);
-
-    expect(response.body.data.filters_applied.category).toBe("Technical");
-  });
-});
-
-// Password reset tests
-describe("Password Reset Flow", () => {
-  test("should send reset email for valid user", async () => {
-    const response = await request(app)
-      .post("/api/auth/forgot-password")
-      .send({ email: "test@example.com" })
-      .expect(200);
-
-    expect(emailService.sendEmail).toHaveBeenCalled();
-  });
-
-  test("should validate reset token correctly", async () => {
-    const token = await generateResetToken("user_id");
-    const response = await request(app)
-      .get(`/api/auth/reset-password/${token}`)
-      .expect(200);
-
-    expect(response.body.data.token_valid).toBe(true);
-  });
-});
-```
-
-### 9.2 Migration Testing
-
-```javascript
-// Migration test suite
-describe("Database Migration", () => {
-  test("should migrate all labs data correctly", async () => {
-    const oldCount = await getOldDatabaseBookCount();
-    await runMigration();
-    const newCount = await getSupabaseBookCount();
-
-    expect(newCount).toBe(oldCount);
-  });
-
-  test("should maintain data integrity after migration", async () => {
-    const sampleBooks = await getRandomBooksFromOldDB(10);
-    await runMigration();
-
-    for (const lab of sampleBooks) {
-      const migratedBook = await getBookFromSupabase(lab.id);
-      expect(migratedBook.title).toBe(lab.title);
-      expect(migratedBook.author).toBe(lab.author);
-    }
-  });
-});
-```
+- [x] Registration, login, logout, `/me`, `/verify-token` implemented and match Section 3.1.
+- [x] Labs CRUD + search implemented and match Section 3.2.
+- [x] Rate limiting active on `/register` and `/login`.
+- [ ] All Section 3 requirements verified by an automated test suite (QA deliverable).
+- [ ] Performance baseline established for Section 4.2 targets (QA deliverable).
 
 ---
 
-## 10. Implementation Timeline
-
-### Phase 1: Foundation Enhancement (Week 1-2)
-
-- [x] âœ… Project structure analysis
-- [ ] ðŸ”„ Supabase project setup
-- [ ] ðŸ”„ Enhanced database schema
-- [ ] ðŸ“‹ Authentication system update
-
-### Phase 2: Search & Filter (Week 3-4)
-
-- [ ] ðŸ“‹ Basic search implementation
-- [ ] ðŸ“‹ Search API endpoints
-- [ ] ðŸ“‹ Frontend search UI
-
-### Phase 3: Forgot Password (Week 5-6)
-
-- [ ] ðŸ“‹ Email service integration
-- [ ] ðŸ“‹ Password reset flow
-- [ ] ðŸ“‹ Security implementation
-- [ ] ðŸ“‹ Frontend reset forms
-
-### Phase 4: Migration & Testing (Week 7-8)
-
-- [ ] ðŸ“‹ Data migration scripts
-- [ ] ðŸ“‹ System testing
-- [ ] ðŸ“‹ Security audit
-
----
-
-## 11. Success Criteria V2
-
-### 11.1 MVP V2 Requirements
-
-- [ ] Search labs by title/author with < 300ms response time
-- [ ] Forgot password with email verification
-- [ ] 100% data migration success to Supabase
-- [ ] Zero downtime deployment
-
-### 11.2 Performance Benchmarks
-
-```javascript
-// Performance test targets
-const performanceTargets = {
-  search: {
-    basic_search: "< 300ms",
-    pagination: "< 100ms",
-  },
-  auth: {
-    password_reset_request: "< 1s",
-    token_validation: "< 100ms",
-    password_update: "< 500ms",
-  },
-  database: {
-    migration_success: "100%",
-  },
-};
-```
-
----
-
-## 12. Risk Assessment V2
-
-### 12.1 Technical Risks
-
-| Risk                  | Impact   | Probability | Mitigation                                      |
-| --------------------- | -------- | ----------- | ----------------------------------------------- |
-| Migration Data Loss   | Critical | Low         | Comprehensive backup strategy, parallel testing |
-| Search Performance    | High     | Medium      | Database indexing, query optimization           |
-| Email Delivery Issues | Medium   | Medium      | Multiple email providers, monitoring            |
-| Supabase Limitations  | High     | Low         | Thorough testing, fallback plans                |
-
-### 12.2 Migration Risks
-
-| Risk                    | Impact   | Probability | Mitigation                              |
-| ----------------------- | -------- | ----------- | --------------------------------------- |
-| User Data Corruption    | Critical | Low         | Staged migration, rollback procedures   |
-| Service Downtime        | High     | Medium      | Blue-green deployment, feature flags    |
-| Authentication Breaking | High     | Low         | Hybrid auth approach, gradual migration |
-| Performance Regression  | Medium   | Medium      | Load testing, performance monitoring    |
-
----
-
-## 13. Conclusion
-
-Script Labs V2 focuses on three core enhancements: search functionality, password recovery, and Supabase migration. This streamlined approach ensures reliable implementation while maintaining system stability.
-
-### Key Deliverables:
-
-1. **Search System** - Basic search by title and author
-2. **Password Recovery** - Email-based password reset with security measures
-3. **Supabase Migration** - Complete transition to managed database service
-
-### Next Steps:
-
-1. Review and approve this PRD
-2. Set up development environment with Supabase
-3. Begin implementation following the phased approach
-
----
-
-**Document Status**: Ready for Development  
-**Approval Required**: Technical Lead, Product Owner  
-**Next Review**: Weekly during development phase
+**Document Status**: Active / Authoritative
+**Last Updated**: 13 September 2026
+**Owner**: Hendri Christianto

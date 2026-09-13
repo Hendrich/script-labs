@@ -25,7 +25,7 @@
 
 ### Backward Compatibility Notes
 
-- Error codes `REGISTRATION_FAILED` / `LOGIN_FAILED` are replaced by `AUTH_FAILED` for Supabase-auth related credential failures.
+- Error codes `REGISTRATION_FAILED` / `LOGIN_FAILED` are replaced by `AUTH_FAILED` for local-database credential failures.
 - Clients relying on specific error messages or codes must update parsing logic.
 - CSP tightening may require frontend to eliminate inline scripts/styles or adopt nonce/hash strategy if reintroduced.
 
