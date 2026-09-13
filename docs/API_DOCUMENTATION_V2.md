@@ -13,7 +13,7 @@
 
 ## 🎯 Gambaran API
 
-Script Labs adalah REST API stateless. **Tidak ada frontend** yang disajikan oleh backend ini — murni API, ditujukan sebagai target latihan untuk automation dan performance testing QA.
+Script Labs adalah REST API stateless. Backend (repository ini) **tidak menyajikan frontend** — tapi frontend-nya tetap ada, di repository terpisah [Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app), di-deploy di Vercel dengan domain [labs.hendri.me](https://labs.hendri.me). Dokumen ini hanya membahas API-nya, ditujukan sebagai target latihan untuk automation dan performance testing QA.
 
 ### Base URL
 

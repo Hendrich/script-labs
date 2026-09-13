@@ -4,7 +4,7 @@
 
 ### 📋 Gambaran Umum
 
-Checklist ini menggantikan "development checklist" generik sebelumnya (yang menyebut frontend, Supabase, dan hal lain yang tidak ada di repository ini). Sekarang ruang lingkupnya adalah apa yang benar-benar bisa diuji QA: API sesungguhnya yang dijelaskan di [PRD_Script_Labs_V2.md](./PRD_Script_Labs_V2.md) dan [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md).
+Checklist ini menggantikan "development checklist" generik sebelumnya (yang menyebut Supabase dan fitur lain yang tidak ada di repository ini). Sekarang ruang lingkupnya adalah apa yang benar-benar bisa diuji QA di sisi **backend/API**: yang dijelaskan di [PRD_Script_Labs_V2.md](./PRD_Script_Labs_V2.md) dan [API_DOCUMENTATION_V2.md](./API_DOCUMENTATION_V2.md). Checklist untuk testing UI/frontend berada di repository terpisah ([script-labs-app](https://github.com/Hendrich/script-labs-app)), di luar cakupan dokumen ini.
 
 ---
 

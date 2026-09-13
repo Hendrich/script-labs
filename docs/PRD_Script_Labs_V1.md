@@ -26,7 +26,7 @@ Script Labs App adalah REST API untuk manajemen resource "lab" (record dengan `t
 
 ### 1.3 Catatan Penting
 
-Proyek ini **tidak memiliki frontend/UI**. Repository ini hanya berisi backend API. Jangan menulis requirement atau test case berbasis tampilan/UI berdasarkan dokumen ini — lihat [PRD V2.0, Bagian 2.2](./PRD_Script_Labs_V2.md#22-di-luar-ruang-lingkup) untuk daftar lengkap hal-hal yang secara eksplisit di luar ruang lingkup proyek ini.
+Repository ini (`script-labs`) hanya berisi **backend API**. Frontend/UI-nya ada, tapi di repository terpisah: [Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app), di-deploy di Vercel dengan domain [labs.hendri.me](https://labs.hendri.me). Jangan menulis requirement atau test case berbasis tampilan/UI berdasarkan dokumen ini — lihat [PRD V2.0, Bagian 2.0 & 2.2](./PRD_Script_Labs_V2.md#20-repository-terkait) untuk penjelasan pemisahan repo dan daftar hal-hal yang di luar ruang lingkup PRD backend ini.
 
 ---
 
@@ -68,7 +68,7 @@ Client (Postman / automation / load test) ↔ Backend API (Node.js/Express) ↔ 
 
 ### 3.2 Technology Stack
 
-- **Backend**: Node.js, Express.js (API-only — tidak ada frontend yang disajikan oleh repository ini)
+- **Backend**: Node.js, Express.js (repository ini API-only — frontend-nya ada di repository terpisah [script-labs-app](https://github.com/Hendrich/script-labs-app))
 - **Database**: PostgreSQL self-hosted
 - **Autentikasi**: JWT (JSON Web Token)
 - **Database Client**: pg (node-postgres)
@@ -283,8 +283,9 @@ CREATE TABLE labs (
 
 | Versi | Tanggal | Perubahan | Penulis |
 |-------|---------|-----------|---------|
-| 1.0 | 2024 | Draf PRD awal (masih menyebut katalog buku & frontend fiktif) | Hendri Christianto |
-| 1.1 | 13 Sep 2026 | Ditulis ulang: hapus semua referensi katalog buku/UI/Supabase, samakan dengan API yang sesungguhnya, dialihbahasakan ke Indonesia | — |
+| 1.0 | 2024 | Draf PRD awal (masih menyebut katalog buku & fitur Supabase fiktif) | Hendri Christianto |
+| 1.1 | 13 Sep 2026 | Ditulis ulang: hapus semua referensi katalog buku/Supabase, samakan dengan API yang sesungguhnya, dialihbahasakan ke Indonesia | — |
+| 1.2 | 13 Sep 2026 | Koreksi: frontend ternyata ada (repo terpisah), bukan "tidak ada frontend" | — |
 
 ---
 

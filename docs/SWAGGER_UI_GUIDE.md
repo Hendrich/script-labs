@@ -59,9 +59,9 @@ http://localhost:3000/api-docs
 
 ### ðŸ”— URL Lainnya
 
-- **Frontend**: `http://localhost:3000`
 - **Health Check**: `http://localhost:3000/health`
 - **API Stats** (dev only): `http://localhost:3000/api/stats`
+- **Frontend** (repository & deployment terpisah, bukan disajikan backend ini): [script-labs-app](https://github.com/Hendrich/script-labs-app), production di [labs.hendri.me](https://labs.hendri.me)
 
 ### ðŸ“ Tips
 

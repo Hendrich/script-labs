@@ -11,24 +11,31 @@
 
 ## 🎯 Gambaran Arsitektur
 
-Script Labs sengaja dibuat sebagai API Node.js/Express **monolitik** yang sederhana, di-deploy di satu VPS. Tidak ada pemisahan microservices, tidak ada database cloud terkelola, tidak ada layer cache, dan tidak ada frontend yang disajikan oleh repository ini — tujuannya adalah target latihan QA yang realistis-tapi-kecil, bukan sistem produksi yang scalable.
+Script Labs sengaja dibuat sebagai API Node.js/Express **monolitik** yang sederhana, di-deploy di satu VPS. Tidak ada pemisahan microservices, tidak ada database cloud terkelola, tidak ada layer cache di repository backend ini — tujuannya adalah target latihan QA yang realistis-tapi-kecil, bukan sistem produksi yang scalable.
+
+Frontend-nya **ada**, tapi sengaja dipisah ke repository lain ([Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app)) dan di-deploy secara terpisah di Vercel (domain [labs.hendri.me](https://labs.hendri.me), DNS dikelola via Cloudflare). Dokumen arsitektur ini hanya membahas sisi backend/API.
 
 ### Arsitektur Tingkat Tinggi
 
 ```mermaid
 graph TB
-    subgraph "Client"
+    subgraph "Vercel (repo terpisah: script-labs-app)"
+        FE[Frontend - labs.hendri.me]
+    end
+
+    subgraph "Client Testing"
         POSTMAN[Postman / Script Automation]
         LOADTEST[Tool Load Test - k6/JMeter/Artillery]
     end
 
-    subgraph "Vultr VPS"
+    subgraph "Vultr VPS (repo ini: script-labs)"
         NGINX[Nginx - reverse proxy + SSL]
         PM2[PM2 process manager]
         API[Express.js API]
         PG[(PostgreSQL self-hosted)]
     end
 
+    FE --> NGINX
     POSTMAN --> NGINX
     LOADTEST --> NGINX
     NGINX --> PM2

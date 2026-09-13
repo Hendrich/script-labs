@@ -36,6 +36,17 @@ Script Labs adalah REST API kecil (Node.js/Express + PostgreSQL) yang dibangun u
 
 ## 2. Ruang Lingkup
 
+### 2.0 Repository Terkait
+
+Proyek Script Labs terdiri dari **dua repository terpisah**:
+
+| Bagian | Repository | Deployment |
+|--------|-----------|------------|
+| Backend (API — dijelaskan di PRD ini) | [Hendrich/script-labs](https://github.com/Hendrich/script-labs) | Vultr VPS |
+| Frontend (UI) | [Hendrich/script-labs-app](https://github.com/Hendrich/script-labs-app) | Vercel, domain [labs.hendri.me](https://labs.hendri.me) (DNS via Cloudflare) |
+
+PRD ini **hanya mencakup backend/API**. Frontend memang ada dan sudah di-deploy — bukan tidak ada — tapi requirement dan test case UI-nya berada di luar cakupan dokumen ini dan sebaiknya dikelola di repository frontend tersebut. Kalau kamu perlu latihan test case berbasis UI (form, tombol, tampilan), gunakan repo/site frontend itu sebagai acuan, bukan dokumen ini.
+
 ### 2.1 Termasuk dalam Ruang Lingkup
 
 - Registrasi user, login, logout, verifikasi sesi/token (JWT, stateless).
@@ -43,9 +54,9 @@ Script Labs adalah REST API kecil (Node.js/Express + PostgreSQL) yang dibangun u
 - Rate limiting pada endpoint autentikasi.
 - Validasi input dan response error yang konsisten.
 
-### 2.2 Di Luar Ruang Lingkup (secara eksplisit BELUM diimplementasikan — jangan buat test case dengan asumsi ini ada)
+### 2.2 Di Luar Ruang Lingkup (secara eksplisit BELUM diimplementasikan pada API ini — jangan buat test case API dengan asumsi ini ada)
 
-- Tidak ada frontend/UI — ini produk API-only. Test case berbasis UI harus menyasar proyek frontend terpisah, bukan repository ini.
+- Test case berbasis UI/tampilan — itu ranah repository frontend ([script-labs-app](https://github.com/Hendrich/script-labs-app)), bukan API ini.
 - Tidak ada fitur lupa password / reset password via email.
 - Tidak ada autentikasi pihak ketiga (Google/Supabase/OAuth) — autentikasi murni email+password lokal.
 - Tidak ada field "sort_by" / "sort_order" / kategori / rating / ISBN pada lab — sebuah lab hanya punya `title` dan `description`.
