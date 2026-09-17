@@ -153,6 +153,24 @@ curl https://api-script-labs.hendri.me/health
 - [ ] `FRONTEND_URL` CORS mengarah ke origin frontend yang benar
 - [ ] Rate limiting dipastikan aktif di `/api/auth/register` dan `/api/auth/login` (`curl` 6 kali berturut-turut dan pastikan 429 muncul di percobaan ke-6)
 - [ ] `NODE_ENV=production` (ini menonaktifkan bypass rate-limiter yang hanya berlaku saat `NODE_ENV=test`)
+- [ ] `DISABLE_AUTH_RATE_LIMIT` tidak di-set `true` (atau dihapus dari `.env`) di luar sesi automation/load testing — lihat bagian [Menonaktifkan Rate Limit Auth Sementara](#-menonaktifkan-rate-limit-auth-sementara-untuk-automation-testing) di bawah
+
+---
+
+## 🔓 Menonaktifkan Rate Limit Auth Sementara (untuk Automation Testing)
+
+Rate limit di `/api/auth/register` dan `/api/auth/login` (5 percobaan/15 menit) di-hardcode di kode dan **tidak dibaca dari `.env`** secara default. Kalau kamu perlu menjalankan automation testing (Postman/Newman, script test lain) yang mengirim banyak request login/register berturut-turut, ada toggle khusus untuk ini:
+
+```env
+DISABLE_AUTH_RATE_LIMIT=true
+```
+
+- Set variabel ini di `.env` server, lalu `pm2 restart script-labs-api --update-env`.
+- Ini **hanya** menonaktifkan rate limiter — beda dengan `NODE_ENV=test`, logging server (`pm2 logs`) tetap jalan normal, jadi kamu masih bisa memantau error selama testing.
+- Server akan mencetak warning `[SECURITY] DISABLE_AUTH_RATE_LIMIT=true — auth rate limiting is OFF` di log setiap kali start dengan flag ini aktif, sebagai pengingat.
+- **Setelah selesai testing, hapus variabel ini (atau set `false`) dan `pm2 restart --update-env` lagi** supaya rate limit kembali melindungi endpoint auth dari brute-force/credential-stuffing untuk traffic user asli.
+
+> Jangan pernah membiarkan `DISABLE_AUTH_RATE_LIMIT=true` di production di luar jendela waktu testing yang terkontrol.
 
 ---
 
