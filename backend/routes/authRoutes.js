@@ -11,8 +11,19 @@ const { AppError } = require("../middlewares/errorHandler");
 const router = express.Router();
 
 // Stricter rate limiter: 5 attempts / 15m for register & login (per IP). Bypass in tests.
+//
+// DISABLE_AUTH_RATE_LIMIT is a separate, explicit opt-out for controlled automation/load
+// testing (see docs/DEPLOYMENT_GUIDE.md) — unlike NODE_ENV=test, it doesn't also silence
+// server-side logging. Never leave it set to "true" outside of a testing window.
+const authRateLimitDisabled = process.env.DISABLE_AUTH_RATE_LIMIT === "true";
+if (authRateLimitDisabled && config.nodeEnv !== "test") {
+  console.warn(
+    "[SECURITY] DISABLE_AUTH_RATE_LIMIT=true — auth rate limiting is OFF. Do not leave this enabled in normal production traffic."
+  );
+}
+
 const authAttemptLimiter =
-  config.nodeEnv === "test"
+  config.nodeEnv === "test" || authRateLimitDisabled
     ? (req, res, next) => next()
     : createRateLimiter(
         15 * 60 * 1000,
